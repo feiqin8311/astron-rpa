@@ -19,7 +19,7 @@ from astronverse.winelement.error import *
 
 WinEleCore: IWinEleCore = WinEleCore()
 
-_SUPPORTED_DESKTOP_TYPES = (PickerDomain.UIA.value, PickerDomain.AX.value)
+_SUPPORTED_DESKTOP_TYPES = (PickerDomain.UIA.value, PickerDomain.AX.value, PickerDomain.ATSPI.value)
 
 
 def _pick_type(pick: WinPick):
@@ -31,6 +31,12 @@ def _darwin_click_key(key: str) -> str:
     if key == "win":
         return "command"
     return key
+
+
+def _desktop_hotkeys():
+    if sys.platform == "darwin":
+        return ("command", "a"), ("command", "v")
+    return ("ctrl", "a"), ("ctrl", "v")
 
 
 def _ax_type_text(text: str) -> None:
@@ -46,7 +52,8 @@ def _ax_type_text(text: str) -> None:
         old = None
     try:
         pyperclip.copy(text)
-        pyautogui.hotkey("command", "v")
+        _, paste = _desktop_hotkeys()
+        pyautogui.hotkey(*paste)
     finally:
         if old is not None:
             try:
@@ -57,6 +64,7 @@ def _ax_type_text(text: str) -> None:
 
 def _input_text_element_ax(locator, input_type, text, credential_text, clear_first):
     control = locator.control()
+    select_all, paste = _desktop_hotkeys()
     used_set_value = False
     if clear_first:
         try:
@@ -64,13 +72,13 @@ def _input_text_element_ax(locator, input_type, text, credential_text, clear_fir
         except Exception:
             used_set_value = False
         if not used_set_value:
-            pyautogui.hotkey("command", "a")
+            pyautogui.hotkey(*select_all)
             pyautogui.press("delete")
     else:
         pyautogui.press("end")
 
     if input_type == ElementInputType.CLIPBOARD:
-        pyautogui.hotkey("command", "v")
+        pyautogui.hotkey(*paste)
         return
 
     payload = text
@@ -109,6 +117,8 @@ class WinEle:
         modifier = keyboard_input.value
         if keyboard_input != MouseClickKeyboard.NONE and sys.platform == "darwin":
             modifier = _darwin_click_key(modifier)
+        elif keyboard_input != MouseClickKeyboard.NONE and sys.platform.startswith("linux") and modifier == "win":
+            modifier = "winleft"
 
         # 按下辅助按键
         if keyboard_input != MouseClickKeyboard.NONE:
@@ -232,7 +242,7 @@ class WinEle:
         locator.move()
         pyautogui.click()
 
-        if pick_type == PickerDomain.AX.value and sys.platform == "darwin":
+        if pick_type in (PickerDomain.AX.value, PickerDomain.ATSPI.value) and sys.platform != "win32":
             _input_text_element_ax(locator, input_type, text, credential_text, clear_first)
             return
 
@@ -271,7 +281,7 @@ class WinEle:
         locator = WinEleCore.find(pick, wait_time)
         control = locator.control()
         name = control.Name
-        if sys.platform == "darwin" and not name:
+        if sys.platform != "win32" and not name:
             value = getattr(control, "value", None)
             if value:
                 return value

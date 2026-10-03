@@ -89,7 +89,7 @@ class Picker:
             self.vision_picker = SubPopen(
                 name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
             )
-            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker_linux"])
+            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
 
         # 2. 服务配置
         self.app_picker.set_param("port", self.svc.get_validate_port(ComponentType.PICKER))

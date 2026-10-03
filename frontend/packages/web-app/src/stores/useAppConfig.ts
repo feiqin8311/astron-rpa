@@ -44,6 +44,7 @@ export const useAppConfigStore = defineStore('appConfig', () => {
     : ''
   const isMac = computed(() => /\bdarwin\b/i.test(systemInfo.value) || /mac/i.test(electronPlatform))
   const isWindows = computed(() => /\bwin32\b/i.test(systemInfo.value) || /win/i.test(electronPlatform))
+  const isLinux = computed(() => /\blinux\b/i.test(systemInfo.value) || /linux/i.test(electronPlatform))
   // 用户目录
   const { state: userPath } = useAsyncState<string>(utilsManager.getUserPath, '')
   // 应用配置
@@ -157,6 +158,7 @@ export const useAppConfigStore = defineStore('appConfig', () => {
   return {
     browserPlugins,
     isMac,
+    isLinux,
     isWindows,
     appInfo,
     updaterState,

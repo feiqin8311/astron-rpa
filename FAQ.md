@@ -17,14 +17,14 @@
 
 ### Q: Can the open-source client run on Linux or macOS?
 
-**A:** Linux is not available yet. macOS is experimental: build with `./build.sh` on a Mac, grant Accessibility / Screen Recording / Input Monitoring, and install `ffmpeg` (`brew install ffmpeg` or place a `ffmpeg` binary in `resources/` before packaging).
+**A:** macOS and Linux clients are experimental. Build with `./build.sh` on the target OS. macOS needs Accessibility / Screen Recording / Input Monitoring and `ffmpeg`. Linux is Ubuntu 24.04 GNOME + X11 only (Wayland is deferred): install the `.deb` (it pulls `gir1.2-atspi-2.0`, `xdotool`, `ffmpeg`, etc.), enable AT-SPI (the client writes `~/.config/environment.d/90-astron.conf` and GNOME `toolkit-accessibility`), and use official Google Chrome for the browser plugin (the `.deb` postinst writes `/etc/opt/chrome/policies/managed`).
 
 **Supported Systems:**
 - ✅ Windows 10/11 (primary)
 - 🧪 macOS 13+ (experimental, Apple Silicon and Intel)
-- ❌ Linux client (deferred)
+- 🧪 Linux Ubuntu 24.04 GNOME + X11 (experimental; Wayland deferred)
 
-Windows-only capabilities (no Mac equivalent): IE, SAP COM, Kingdee/Yonyou COM, VK.exe driver-level keyboard, Access ODBC, 360 browsers, Excel.app/Word.app live COM (macOS uses openpyxl / python-docx file mode). Notarization requires an Apple Developer certificate and is not part of the unsigned experimental build.
+Windows-only capabilities: IE, SAP COM, Kingdee/Yonyou COM, VK.exe driver-level keyboard, Access ODBC, 360 browsers, Excel.app/Word.app live COM (macOS/Linux use openpyxl / python-docx file mode). Notarization requires an Apple Developer certificate and is not part of the unsigned experimental build.
 
 ### Q: 🆕 Is it normal for the server atlas container to exit automatically after starting?
 

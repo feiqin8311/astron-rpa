@@ -18,11 +18,9 @@ from astronverse.pdf import (
 from astronverse.pdf.core import IPDFCore
 from astronverse.pdf.error import *
 
-if sys.platform in ("win32", "darwin"):
+if sys.platform in ("win32", "darwin") or platform.system() == "Linux":
     # core_win is a pure-Python implementation (pypdf, pdfplumber, pypdfium2) and platform-neutral
     from astronverse.pdf.core_win import PDFCore
-elif platform.system() == "Linux":
-    from astronverse.pdf.core_unix import PDFCore
 else:
     raise NotImplementedError(f"Your platform ({platform.system()}) is not supported by (pdf).")
 

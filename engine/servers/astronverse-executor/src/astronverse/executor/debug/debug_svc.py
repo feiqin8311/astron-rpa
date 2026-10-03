@@ -11,7 +11,7 @@ from astronverse.executor import AstGlobals, ExecuteStatus
 from astronverse.executor.config import Config
 from astronverse.executor.debug.debug import Debug
 from astronverse.executor.debug.package import Package
-from astronverse.executor.debug.recording import RecordingTool, resolve_darwin_ffmpeg
+from astronverse.executor.debug.recording import RecordingTool, resolve_darwin_ffmpeg, resolve_linux_ffmpeg
 from astronverse.executor.debug.report import Report
 from astronverse.executor.debug.tools import LogTool
 from astronverse.executor.error import *
@@ -105,6 +105,8 @@ class DebugSvc:
                 if self.recording_tool.config.get("open"):
                     if sys.platform == "darwin":
                         url = resolve_darwin_ffmpeg(self.conf.resource_dir)
+                    elif sys.platform.startswith("linux"):
+                        url = resolve_linux_ffmpeg(self.conf.resource_dir)
                     else:
                         url = os.path.join(os.path.abspath(self.conf.resource_dir), "ffmpeg.exe")
                     if not url or not os.path.exists(url):

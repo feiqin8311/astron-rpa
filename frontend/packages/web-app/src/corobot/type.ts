@@ -75,7 +75,7 @@ export interface PythonPackage {
   mirror: string
 }
 
-export type ElementType = 'uia' | 'ax' | 'web' | 'cv' | 'jab'
+export type ElementType = 'uia' | 'ax' | 'atspi' | 'web' | 'cv' | 'jab'
 export type PickerType = 'ELEMENT' | 'WINDOW' | 'POINT' | 'SIMILAR' | 'OTHERS'
 
 export interface ElementData {

@@ -180,6 +180,11 @@ def _autostart_exe_path(svc: Svc) -> str:
         return os.path.join(os.path.dirname(os.path.dirname(svc.config.conf_file)), "astron-rpa.exe").lower()
     conf = svc.config.conf_file
     resources = os.path.dirname(conf)
+    if sys.platform.startswith("linux"):
+        exe = os.path.join(os.path.dirname(resources), "astron-rpa")
+        if os.path.isfile(exe):
+            return exe
+        return sys.executable
     contents = os.path.dirname(resources)
     exe = os.path.join(contents, "MacOS", "astron-rpa")
     if os.path.isfile(exe):
@@ -192,9 +197,6 @@ def auto_start_check():
     """
     自启动探测
     """
-    if sys.platform.startswith("linux"):
-        return res_msg(msg="", data={"autostart": False})
-
     from astronverse.scheduler.utils.window import AutoStart
 
     return res_msg(msg="", data={"autostart": AutoStart.check()})
@@ -205,9 +207,6 @@ def auto_start_enable(svc: Svc = Depends(get_svc)):
     """
     自动开启
     """
-    if sys.platform.startswith("linux"):
-        return res_msg(msg="", data={"tips": "操作异常，linux暂不支持自启动"})
-
     from astronverse.scheduler.utils.window import AutoStart
 
     AutoStart.enable(_autostart_exe_path(svc))
@@ -219,9 +218,6 @@ def auto_start_disable():
     """
     自启动关闭
     """
-    if sys.platform.startswith("linux"):
-        return res_msg(msg="", data={"tips": "操作异常，linux暂不支持自启动"})
-
     from astronverse.scheduler.utils.window import AutoStart
 
     AutoStart.disable()

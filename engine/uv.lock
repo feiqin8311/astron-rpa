@@ -417,6 +417,7 @@ dependencies = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'" },
     { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
@@ -431,6 +432,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'", specifier = ">=3.42,<3.51" },
     { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
@@ -512,6 +514,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pyautogui" },
     { name = "pydantic" },
+    { name = "pynput", marker = "sys_platform == 'linux'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pywinhook", marker = "sys_platform == 'win32'" },
@@ -531,6 +534,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pyautogui" },
     { name = "pydantic" },
+    { name = "pynput", marker = "sys_platform == 'linux'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pywinhook", marker = "sys_platform == 'win32'" },
@@ -706,7 +710,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "keyboard" },
     { name = "pydantic" },
-    { name = "pynput", marker = "sys_platform == 'darwin'" },
+    { name = "pynput", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "requests" },
     { name = "uvicorn" },
     { name = "watchfiles" },
@@ -721,7 +725,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "keyboard" },
     { name = "pydantic" },
-    { name = "pynput", marker = "sys_platform == 'darwin'" },
+    { name = "pynput", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "requests" },
     { name = "uvicorn" },
     { name = "watchfiles" },
@@ -880,7 +884,6 @@ dependencies = [
     { name = "psutil" },
     { name = "python-docx" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
-    { name = "pywpsrpc", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
@@ -890,8 +893,9 @@ requires-dist = [
     { name = "psutil" },
     { name = "python-docx" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
-    { name = "pywpsrpc", marker = "sys_platform == 'linux'" },
+    { name = "pywpsrpc", marker = "extra == 'wps'" },
 ]
+provides-extras = ["wps"]
 
 [[package]]
 name = "astronverse-workflowlib"
@@ -2128,6 +2132,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pycairo"
+version = "1.29.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/7c/ab4637b028d9ee12280ab9342f28310e613d5ca30c4d72d2aebeaa6a4969/pycairo-1.29.1.tar.gz", hash = "sha256:4fbd26b4af24c9787d84cf5448e34eb8dca064b732479aaecd03109520eebd5f", size = 666272, upload-time = "2026-08-07T08:45:50.095Z" }
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -2281,6 +2291,15 @@ dependencies = [
     { name = "pyrect" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/70/c7a4f46dbf06048c6d57d9489b8e0f9c4c3d36b7479f03c5ca97eaa2541d/PyGetWindow-0.0.9.tar.gz", hash = "sha256:17894355e7d2b305cd832d717708384017c1698a90ce24f6f7fbf0242dd0a688", size = 9699, upload-time = "2020-10-04T02:12:50.806Z" }
+
+[[package]]
+name = "pygobject"
+version = "3.50.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pycairo", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/5d/f2946cc6c1baf56dee6e942af8cfa16472538a8ad9d780d9f484e7554288/pygobject-3.50.2.tar.gz", hash = "sha256:ece6b860aab77cb649fdfc6e88d8a83765e7a62f7ffd39a628d6e2a0d397a7ff", size = 1085854, upload-time = "2025-10-18T13:44:45.634Z" }
 
 [[package]]
 name = "pymsgbox"
@@ -5166,15 +5185,6 @@ dependencies = [
     { name = "pywin32", marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ce/d1/6dcf4a17f425a5e3e2c011bac622dacae3128e96fd038b3e6f56c0e7a032/pyWinhook-1.6.2.zip", hash = "sha256:18fe2f63245d8a2f9d83f8d9c385e3695a6363badd50d492eb3e7f6f06a01c0c", size = 15791, upload-time = "2020-01-17T22:00:09.328Z" }
-
-[[package]]
-name = "pywpsrpc"
-version = "2.3.12"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/99/29/924dfe622994522010f6e5c5e1a7d2d268caabbb77551ef2c852f5143926/pywpsrpc-2.3.12.tar.gz", hash = "sha256:787441dea98b09f1b34eec38ebb8d340dfb244f5e73191ad58decceeabac3085", size = 6251402, upload-time = "2025-03-26T13:15:00.245Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/97/f2f85ac3c4a85093f829080262db8e911151d57a0ea28d0caa0d4228e8c6/pywpsrpc-2.3.12-cp313-cp313-manylinux_2_5_x86_64.whl", hash = "sha256:0a3bf1ee64c6cce69426851bee50ae62fe06117a5f92fa188a8e45108c447857", size = 7893432, upload-time = "2025-03-26T13:20:17.123Z" },
-]
 
 [[package]]
 name = "pyyaml"

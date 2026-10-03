@@ -85,9 +85,24 @@ PYTHON_CORE_DIR="$BUILD_DIR/python_core"
 DIST_DIR="$BUILD_DIR/dist"
 WHEEL_REQUIREMENTS="$BUILD_DIR/requirements.txt"
 ARCHIVE_DIST_DIR="$SCRIPT_DIR/resources"
-ARCHIVE_FILE="$ARCHIVE_DIST_DIR/python_core.tar.gz"
-HASH_FILE="$ARCHIVE_DIST_DIR/python_core.tar.gz.sha256.txt"
 BACKUP_FILE="$ENGINE_DIR/pyproject.toml.backup"
+
+# electron-builder mac extraResources reads resources/${arch}/python_core.tar.gz
+# (arch is arm64 / x64). Linux extraFiles still copies resources/python_core.tar.gz.
+HOST_OS="$(uname -s)"
+HOST_MACHINE="$(uname -m)"
+case "$HOST_MACHINE" in
+  arm64|aarch64) HOST_MAC_ARCH="arm64" ;;
+  x86_64|amd64)  HOST_MAC_ARCH="x64" ;;
+  *)             HOST_MAC_ARCH="$HOST_MACHINE" ;;
+esac
+if [[ "$HOST_OS" == Darwin* ]]; then
+  ARCHIVE_ARCH_DIR="$ARCHIVE_DIST_DIR/$HOST_MAC_ARCH"
+else
+  ARCHIVE_ARCH_DIR="$ARCHIVE_DIST_DIR"
+fi
+ARCHIVE_FILE="$ARCHIVE_ARCH_DIR/python_core.tar.gz"
+HASH_FILE="$ARCHIVE_ARCH_DIR/python_core.tar.gz.sha256.txt"
 
 # =============================================================================
 # 3. Environment Checks
@@ -174,7 +189,7 @@ else
   fi
 
   echo "Creating build directory structure..."
-  mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ARCHIVE_DIST_DIR"
+  mkdir -p "$BUILD_DIR" "$DIST_DIR" "$ARCHIVE_ARCH_DIR"
 
   # Locate or install Python
   if [[ -n "$PYTHON_DIR" ]]; then
@@ -352,19 +367,32 @@ else
     OS_NAME="$(uname -s)"
     case "$OS_NAME" in
       Darwin*)
-        BUILD_CMD="build:mac"
+        ELECTRON_ARCH_FLAGS=()
+        if [[ -f "$SCRIPT_DIR/resources/arm64/python_core.tar.gz" ]]; then
+          ELECTRON_ARCH_FLAGS+=(--arm64)
+        fi
+        if [[ -f "$SCRIPT_DIR/resources/x64/python_core.tar.gz" ]]; then
+          ELECTRON_ARCH_FLAGS+=(--x64)
+        fi
+        if [[ ${#ELECTRON_ARCH_FLAGS[@]} -eq 0 ]]; then
+          echo "Error: no resources/<arch>/python_core.tar.gz found (arm64 or x64)." >&2
+          echo "Run ./build.sh without --skip-engine first, or copy the matching archive from another Mac." >&2
+          exit 1
+        fi
+        echo "Building desktop application (build:mac ${ELECTRON_ARCH_FLAGS[*]})..."
+        pnpm --filter astron-rpa run build
+        pnpm --filter astron-rpa exec electron-builder --mac "${ELECTRON_ARCH_FLAGS[@]}"
         ;;
       Linux*)
-        BUILD_CMD="build:linux"
+        echo "Building desktop application (build:linux)..."
+        pnpm --filter astron-rpa run build:linux
         ;;
       *)
         echo "Warning: Unknown OS $OS_NAME, defaulting to build:mac" >&2
-        BUILD_CMD="build:mac"
+        echo "Building desktop application (build:mac)..."
+        pnpm --filter astron-rpa run build:mac
         ;;
     esac
-
-    echo "Building desktop application ($BUILD_CMD)..."
-    pnpm --filter astron-rpa run "$BUILD_CMD"
   )
 
   echo "Frontend build completed successfully"
@@ -390,7 +418,7 @@ if [[ "$SKIP_FRONTEND" -eq 0 ]]; then
   echo "  Frontend installer: frontend/packages/electron-app/dist/"
 fi
 if [[ "$SKIP_ENGINE" -eq 0 ]]; then
-  echo "  Engine core archive: resources/python_core.tar.gz"
-  echo "  SHA-256 hash file:   resources/python_core.tar.gz.sha256.txt"
+  echo "  Engine core archive: $ARCHIVE_FILE"
+  echo "  SHA-256 hash file:   $HASH_FILE"
 fi
 echo ""

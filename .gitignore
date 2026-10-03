@@ -51,6 +51,8 @@ wheels/
 build/
 !frontend/packages/electron-app/build/
 !frontend/packages/electron-app/build/entitlements.mac.plist
+!frontend/packages/electron-app/build/linux/
+!frontend/packages/electron-app/build/linux/after-install.sh
 dist/
 out/
 tmp/
@@ -173,6 +175,8 @@ coverage.out
 resources/*.7z
 resources/*.tar.gz
 resources/*.sha256.txt
+resources/arm64/
+resources/x64/
 resources/vnc/*
 frontend/pnpm-lock.yaml
 engine/servers/astronverse-executor/astron/*

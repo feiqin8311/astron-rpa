@@ -77,6 +77,7 @@ dependencies = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'" },
     { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
@@ -91,6 +92,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'", specifier = ">=3.42,<3.51" },
     { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
@@ -113,6 +115,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pyautogui" },
     { name = "pydantic" },
+    { name = "pynput", marker = "sys_platform == 'linux'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pywinhook", marker = "sys_platform == 'win32'" },
@@ -132,6 +135,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pyautogui" },
     { name = "pydantic" },
+    { name = "pynput", marker = "sys_platform == 'linux'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "pywinhook", marker = "sys_platform == 'win32'" },
@@ -326,6 +330,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/10/bf/8d6ebc7dded797bd0f0160d52188021211f011a2b164ef0ae1dac4587465/cryptography-50.0.2-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:7a8701d6b584d76e909e3d305b7d126b41439876a5aaf76cddc67fc230eafa2e", size = 4897738, upload-time = "2026-09-30T15:29:43.106Z" },
     { url = "https://files.pythonhosted.org/packages/d4/aa/f3f6e0de7e6253b8baa8b2d8fb9d50924fa75cee3d4624bd4bc1208ee923/cryptography-50.0.2-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:ce47f66801c20ec6c6632453bb5960fe38939e9306970b48b3a5a26de7745d94", size = 5058280, upload-time = "2026-09-30T15:29:44.827Z" },
 ]
+
+[[package]]
+name = "evdev"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/07/eb30593524303d1367f0dc00c1c66582c994dba412a47751e34bad9fa29b/evdev-2.0.0.tar.gz", hash = "sha256:442fb3f4c8dfc9e61e901133c356220c02d663eca8f34722e0cecdd637eba504", size = 33766, upload-time = "2026-08-23T10:31:26.835Z" }
 
 [[package]]
 name = "idna"
@@ -563,6 +573,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/65/ff/cdae0a8c2118a0de74b6cf4cbcdcaf8fd25857e6c3f205ce4b1794b27814/PyAutoGUI-0.9.54.tar.gz", hash = "sha256:dd1d29e8fd118941cb193f74df57e5c6ff8e9253b99c7b04f39cfc69f3ae04b2", size = 61236, upload-time = "2023-05-24T20:11:32.972Z" }
 
 [[package]]
+name = "pycairo"
+version = "1.29.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/7c/ab4637b028d9ee12280ab9342f28310e613d5ca30c4d72d2aebeaa6a4969/pycairo-1.29.1.tar.gz", hash = "sha256:4fbd26b4af24c9787d84cf5448e34eb8dca064b732479aaecd03109520eebd5f", size = 666272, upload-time = "2026-08-07T08:45:50.095Z" }
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -679,12 +695,37 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e1/70/c7a4f46dbf06048c6d57d9489b8e0f9c4c3d36b7479f03c5ca97eaa2541d/PyGetWindow-0.0.9.tar.gz", hash = "sha256:17894355e7d2b305cd832d717708384017c1698a90ce24f6f7fbf0242dd0a688", size = 9699, upload-time = "2020-10-04T02:12:50.806Z" }
 
 [[package]]
+name = "pygobject"
+version = "3.50.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pycairo" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/5d/f2946cc6c1baf56dee6e942af8cfa16472538a8ad9d780d9f484e7554288/pygobject-3.50.2.tar.gz", hash = "sha256:ece6b860aab77cb649fdfc6e88d8a83765e7a62f7ffd39a628d6e2a0d397a7ff", size = 1085854, upload-time = "2025-10-18T13:44:45.634Z" }
+
+[[package]]
 name = "pymsgbox"
 version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ae/6a/e80da7594ee598a776972d09e2813df2b06b3bc29218f440631dfa7c78a8/pymsgbox-2.0.1.tar.gz", hash = "sha256:98d055c49a511dcc10fa08c3043e7102d468f5e4b3a83c6d3c61df722c7d798d", size = 20768, upload-time = "2025-09-09T00:38:56.863Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/3e/08c8cac81b2b2f7502746e6b9c8e5b0ec6432cd882c605560fc409aaf087/pymsgbox-2.0.1-py3-none-any.whl", hash = "sha256:5de8ec19bca2ca7e6c09d39c817c83f17c75cee80275235f43a9931db699f73b", size = 9994, upload-time = "2025-09-09T00:38:55.672Z" },
+]
+
+[[package]]
+name = "pynput"
+version = "1.8.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "evdev", marker = "'linux' in sys_platform" },
+    { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
+    { name = "python-xlib", marker = "'linux' in sys_platform" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/c6/e2d415610cfbc78308bee44218a46124aaa3301b1df08814df819b2254a1/pynput-1.8.2.tar.gz", hash = "sha256:f493c87157cd3861b4468f7f896857051762f44ed26f1b641e7cc5840a457087", size = 82818, upload-time = "2026-05-12T19:11:39.464Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/98/bbeb760852adb27f166ce1617f0e51aabb15f21b1e60ea703f2aed3c78ac/pynput-1.8.2-py2.py3-none-any.whl", hash = "sha256:8cc38cf13a6ab2749cb375678be8a0fd705d7ce49c8001ff5db4007a723bbef1", size = 92028, upload-time = "2026-05-12T19:11:37.89Z" },
 ]
 
 [[package]]
@@ -806,6 +847,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
+]
+
+[[package]]
+name = "python-xlib"
+version = "0.33"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/f5/8c0653e5bb54e0cbdfe27bf32d41f27bc4e12faa8742778c17f2a71be2c0/python-xlib-0.33.tar.gz", hash = "sha256:55af7906a2c75ce6cb280a584776080602444f75815a7aff4d287bb2d7018b32", size = 269068, upload-time = "2022-12-25T18:53:00.824Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl", hash = "sha256:c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398", size = 182185, upload-time = "2022-12-25T18:52:58.662Z" },
 ]
 
 [[package]]

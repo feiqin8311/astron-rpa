@@ -92,9 +92,16 @@ class AutoStart:
         return os.path.join(os.path.expanduser("~"), "Library", "LaunchAgents", f"com.{label}.plist")
 
     @staticmethod
+    def desktop_path(name="astron-rpa"):
+        label = name.replace(" ", "-")
+        return os.path.join(os.path.expanduser("~"), ".config", "autostart", f"{label}.desktop")
+
+    @staticmethod
     def check(name="astron-rpa"):
         if sys.platform == "darwin":
             return os.path.isfile(AutoStart.launch_agent_path(name))
+        if sys.platform.startswith("linux"):
+            return os.path.isfile(AutoStart.desktop_path(name))
         if sys.platform != "win32":
             return False
         exe_path = Registry.get_registry_value(AutoStart.AUTO_START_KEY_PATH, name)
@@ -131,6 +138,23 @@ class AutoStart:
             with open(plist_path, "w", encoding="utf-8") as fh:
                 fh.write(body)
             return
+        if sys.platform.startswith("linux"):
+            if AutoStart.check(name):
+                return
+            desktop_path = AutoStart.desktop_path(name)
+            os.makedirs(os.path.dirname(desktop_path), exist_ok=True)
+            escaped = exe_path.replace("\\", "\\\\").replace('"', '\\"')
+            body = (
+                "[Desktop Entry]\n"
+                "Type=Application\n"
+                f"Name={name}\n"
+                f'Exec="{escaped}"\n'
+                "X-GNOME-Autostart-enabled=true\n"
+                "Hidden=false\n"
+            )
+            with open(desktop_path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+            return
         if sys.platform != "win32":
             logger.info("AutoStart.enable is not supported on %s, skipping", sys.platform)
             return
@@ -145,6 +169,12 @@ class AutoStart:
             plist_path = AutoStart.launch_agent_path(name)
             try:
                 os.remove(plist_path)
+            except FileNotFoundError:
+                pass
+            return
+        if sys.platform.startswith("linux"):
+            try:
+                os.remove(AutoStart.desktop_path(name))
             except FileNotFoundError:
                 pass
             return

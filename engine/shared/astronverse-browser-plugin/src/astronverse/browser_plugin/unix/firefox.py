@@ -41,6 +41,19 @@ class FirefoxPluginManager(PluginManagerCore):
     def open_browser(self):
         pass
 
+    def check_browser_running(self) -> bool:
+        try:
+            result = subprocess.run(
+                ["pgrep", "-x", self.firefox_command or "firefox"],
+                check=False,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+
     def install_plugin(self):
         subprocess.Popen(
             [self.firefox_command, self.plugin_data.plugin_path],

@@ -32,6 +32,14 @@ def resolve_darwin_ffmpeg(resource_dir):
     return shutil.which("ffmpeg")
 
 
+def resolve_linux_ffmpeg(resource_dir=None):
+    if resource_dir:
+        bundled = os.path.join(os.path.abspath(resource_dir), "ffmpeg")
+        if os.path.isfile(bundled) and os.access(bundled, os.X_OK):
+            return bundled
+    return shutil.which("ffmpeg")
+
+
 def avfoundation_screen_index(ffmpeg_bin):
     global _AVFOUNDATION_SCREEN_INDEX
     if _AVFOUNDATION_SCREEN_INDEX is not None:
@@ -90,6 +98,11 @@ class RecordingTool:
                 return
             if sys.platform == "darwin":
                 url = resolve_darwin_ffmpeg(self.svc.conf.resource_dir)
+                if not url:
+                    logger.warning("ffmpeg not found, skip recording")
+                    return
+            elif sys.platform.startswith("linux"):
+                url = resolve_linux_ffmpeg(self.svc.conf.resource_dir)
                 if not url:
                     logger.warning("ffmpeg not found, skip recording")
                     return

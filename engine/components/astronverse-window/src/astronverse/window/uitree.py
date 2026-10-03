@@ -12,6 +12,8 @@ elif sys.platform == "darwin":
 
     UITreeCore: IUITreeCore = UITreeCore()
 elif platform.system() == "Linux":
-    pass
+    from astronverse.window.core_unix import UITreeCore
+
+    UITreeCore: IUITreeCore = UITreeCore()
 else:
     raise NotImplementedError(f"Your platform ({platform.system()}) is not supported by (window).")

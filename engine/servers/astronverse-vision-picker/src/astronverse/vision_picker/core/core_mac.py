@@ -33,9 +33,13 @@ class RectHandler(IRectHandler):
 
     @staticmethod
     def get_foreground_window_rect():
-        window_id, title, _rect = RectHandler._frontmost_window()
-        width, height = pyautogui.size()
-        return window_id, title or "", (0, 0, width, height)
+        # picker.take_screenshot crops with LTRB: (left, top, right, bottom)
+        window_id, title, rect = RectHandler._frontmost_window()
+        if window_id is None or rect is None:
+            width, height = pyautogui.size()
+            return None, "", (0, 0, width, height)
+        x, y, w, h = rect
+        return window_id, title or "", (x, y, x + w, y + h)
 
 
 class PickCore(IPickCore):

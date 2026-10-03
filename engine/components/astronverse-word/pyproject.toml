@@ -10,8 +10,10 @@ dependencies = [
     "psutil",
     "pillow",
     "pywin32; sys_platform == 'win32'",
-    "pywpsrpc; sys_platform == 'linux'"
 ]
+
+[project.optional-dependencies]
+wps = ["pywpsrpc"]
 
 [tool.uv.sources]
 astronverse-actionlib = {path = "../../shared/astronverse-actionlib", editable = true}

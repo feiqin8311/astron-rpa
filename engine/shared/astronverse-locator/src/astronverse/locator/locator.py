@@ -88,6 +88,12 @@ def ax_factory_callback():
     return ax_factory.find
 
 
+def atspi_factory_callback():
+    from astronverse.locator.core.atspi_locator import atspi_factory
+
+    return atspi_factory.find
+
+
 class LocatorManager:
     """管理器"""
 
@@ -99,6 +105,7 @@ class LocatorManager:
             PickerDomain.JAB.value: [jab_factory_callback],
             PickerDomain.SAP.value: [sap_factory_callback],
             "ax": [ax_factory_callback],
+            PickerDomain.ATSPI.value: [atspi_factory_callback],
         }
 
     @staticmethod

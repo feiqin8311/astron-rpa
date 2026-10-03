@@ -32,6 +32,7 @@
 |---------|---------|---------|
 | Windows | 10/11 | ✅ 主要支持 |
 | macOS | 13+ (Apple Silicon / Intel) | 🧪 实验性支持 |
+| Linux | Ubuntu 24.04 GNOME + X11 | 🧪 实验性支持（Wayland 暂缓） |
 
 ### 硬件配置
 | 配置项 | 最低要求 | 推荐配置 |
@@ -516,7 +517,7 @@ skip_engine_start: false
 # 🚀 完整构建（引擎 + 前端桌面应用）
 ./build.sh
 
-# ⏭️ 只构建引擎（生成 resources/python_core.tar.gz）
+# ⏭️ 只构建引擎（macOS 生成 resources/<arch>/python_core.tar.gz）
 ./build.sh --skip-frontend
 
 # ⏭️ 只构建前端桌面应用
@@ -530,8 +531,8 @@ skip_engine_start: false
 1. ✅ 自动通过 `uv` 准备独立便携式 Python 3.13（或使用 `-p` 参数指定）到目录 `build/python_core`
 2. ✅ 构建 RPA 引擎所有 workspace wheel 包到 `build/dist`
 3. ✅ 安装依赖与本地 wheel 包到 `build/python_core`
-4. ✅ 压缩 Python 核心环境到 `resources/python_core.tar.gz`，并生成 SHA-256 校验文件 `resources/python_core.tar.gz.sha256.txt`
-5. ✅ 安装前端依赖并打包桌面客户端（macOS 运行 `pnpm run build:mac`，Linux 运行 `pnpm run build:linux`）
+4. ✅ 压缩 Python 核心环境：macOS 写入 `resources/<arch>/python_core.tar.gz`（`arm64` 或 `x64`，与构建机一致），Linux 写入 `resources/python_core.tar.gz`，并在同目录生成 SHA-256 校验文件。electron-builder extraResources 使用 `${arch}`，每个 Mac DMG 只嵌入对应架构的 Python。双架构发布需要两台机器各打一份，再把 `resources/arm64` 和 `resources/x64` 放到一起打包。
+5. ✅ 安装前端依赖并打包桌面客户端。macOS 上 `build.sh` 只打包已经存在 `resources/<arch>/python_core.tar.gz` 的架构；Linux 运行 `pnpm run build:linux`。
 
 ##### 3️⃣ 安装应用安装包
 
@@ -552,6 +553,15 @@ frontend/packages/electron-app/dist/
   - **屏幕录制 (Screen Recording)**: 授权 **星辰RPA** / **astron-rpa**（用于桌面截图与视觉拾取功能）
   - **输入监控 (Input Monitoring)**: 授权 **星辰RPA** / **astron-rpa**（用于全局快捷键响应与键鼠监听）
 - **ffmpeg**: 录屏优先使用 `resources/ffmpeg`（若已放入资源目录），否则使用 `PATH` 中的 `ffmpeg`（`brew install ffmpeg`）。`ffmpeg.exe` 仅用于 Windows，不会打进 Mac 包。
+
+##### 4️⃣b Linux（Ubuntu 24.04 GNOME + X11）首次启动
+
+Linux 客户端为实验性支持，仅覆盖 GNOME + X11。Wayland 坐标映射暂缓。
+
+- **安装 `.deb`**：依赖 `gir1.2-atspi-2.0`、`at-spi2-core`、`xdotool`、`x11-utils`、`wmctrl`、`ffmpeg`。postinst 会把 Chrome 托管策略写入 `/etc/opt/chrome/policies/managed`，扩展 JSON 写入 `/opt/google/chrome/extensions`。请使用官方 Google Chrome（`google-chrome-stable`）。
+- **AT-SPI**：客户端会打开 GNOME `toolkit-accessibility`，并把 `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1` 写入 `~/.config/environment.d/90-astron.conf`（不使用 sudo，不写 `/etc/profile`）。首次运行后请注销再登录一次。
+- **会话**：拾取和高亮假定 X11（录屏使用 `x11grab`）。若默认是 Wayland，请把登录会话切到 Ubuntu on Xorg。
+- **ffmpeg**：系统包（`apt install ffmpeg`），不是捆绑的 `.exe`。
 
 ##### 5️⃣ 配置服务端地址
 

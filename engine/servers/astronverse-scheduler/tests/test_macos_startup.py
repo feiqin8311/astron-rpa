@@ -41,8 +41,10 @@ def test_platform_utils_paths_on_windows(monkeypatch):
     assert platform_shell(win_shell=True, linux_shell=False) is True
 
 
-def test_linux_env_check_handles_missing_gsettings(monkeypatch):
+def test_linux_env_check_handles_missing_gsettings(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("astronverse.scheduler.core.schduler.init.emit_to_front", MagicMock())
 
     def mock_run(*args, **kwargs):
         raise FileNotFoundError("No such file or directory: 'gsettings'")
@@ -51,6 +53,39 @@ def test_linux_env_check_handles_missing_gsettings(monkeypatch):
 
     # Should catch FileNotFoundError and not raise
     linux_env_check()
+
+
+def test_linux_env_check_writes_environment_d(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("astronverse.scheduler.core.schduler.init.emit_to_front", MagicMock())
+
+    def mock_run(*args, **kwargs):
+        cmd = args[0] if args else kwargs.get("args", [])
+        if cmd and cmd[0] == "gsettings" and cmd[1] == "get":
+            return MagicMock(stdout="true\n", returncode=0)
+        return MagicMock(stdout="", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+    linux_env_check()
+    conf = tmp_path / ".config" / "environment.d" / "90-astron.conf"
+    assert conf.is_file()
+    assert "QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1" in conf.read_text()
+
+
+def test_linux_autostart_desktop(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert AutoStart.check() is False
+    AutoStart.enable("/opt/astron-rpa/astron-rpa")
+    assert AutoStart.check() is True
+    desktop = AutoStart.desktop_path()
+    assert os.path.isfile(desktop)
+    body = open(desktop, encoding="utf-8").read()
+    assert "X-GNOME-Autostart-enabled=true" in body
+    assert "/opt/astron-rpa/astron-rpa" in body
+    AutoStart.disable()
+    assert AutoStart.check() is False
 
 
 def test_linux_env_check_skipped_on_darwin(monkeypatch):

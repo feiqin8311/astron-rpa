@@ -70,7 +70,7 @@ const detailElementData = ref<PickElementType>({
   // 元素详情
   app: '',
   version: '',
-  type: appConfig.isMac ? 'ax' : 'uia',
+  type: appConfig.isMac ? 'ax' : (appConfig.isLinux ? 'atspi' : 'uia'),
   path: null,
 })
 const isShadow = ref(false) // 是否是阴影元素
@@ -268,7 +268,7 @@ watch(
       // 自定义编辑元素
       customData.value = elementCustomFormat(version, type, path)
       // 设置相似拾取按钮展示
-      similarButton.value = ['web', 'uia', 'ax'].includes(type)
+      similarButton.value = ['web', 'uia', 'ax', 'atspi'].includes(type)
       formOption.value.pickType = type
       // 若是相似元素，获取到相似元素个数
       if (type === 'web') {
@@ -287,7 +287,7 @@ watch(
         // 设置元素匹配类型
         formOption.value.matchTypes = matchTypes || []
       }
-      else if (type === 'uia' || type === 'ax') {
+      else if (type === 'uia' || type === 'ax' || type === 'atspi') {
         similarCount.value = picker_type === 'SIMILAR' ? similar_count : 0 // 设置相似元素个数
         formOption.value.customOptions = CUSTOM_OPTIONS.filter(
           item => item.value === VISUALIZATION,

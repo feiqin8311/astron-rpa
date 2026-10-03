@@ -22,6 +22,8 @@ if sys.platform == "win32":
     from astronverse.input.code.win32gui import window_find, window_info, window_top
 elif sys.platform == "darwin":
     from astronverse.input.code.macgui import window_find, window_info, window_top
+elif sys.platform.startswith("linux"):
+    from astronverse.input.code.linuxgui import window_find, window_info, window_top
 else:
 
     def window_find(pick):

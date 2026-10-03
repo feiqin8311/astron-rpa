@@ -41,7 +41,7 @@ class Strategy:
         error = None
 
         if sys.platform == "darwin":
-            if strategy_svc.domain == PickerDomain.AX:
+            if strategy_svc.domain in (PickerDomain.AX, PickerDomain.UIA):
                 from astronverse.picker.strategy.ax_strategy import ax_default_strategy
 
                 strategy_func = ax_default_strategy
@@ -53,6 +53,25 @@ class Strategy:
                 from astronverse.picker.strategy.web_strategy import web_default_strategy
 
                 strategy_func = web_default_strategy
+            else:
+                raise NotImplementedError(f"macOS 不支持 {strategy_svc.domain.value} 拾取，请使用 AX 或 WEB 重新拾取")
+        elif sys.platform.startswith("linux"):
+            if strategy_svc.domain in (PickerDomain.ATSPI, PickerDomain.UIA, PickerDomain.AX):
+                from astronverse.picker.strategy.atspi_strategy import atspi_default_strategy
+
+                strategy_func = atspi_default_strategy
+            elif strategy_svc.domain in (PickerDomain.AUTO, PickerDomain.AUTO_DESK, PickerDomain.AUTO_WEB):
+                from astronverse.picker.strategy.auto_strategy_linux import auto_default_strategy_linux
+
+                strategy_func = auto_default_strategy_linux
+            elif strategy_svc.domain == PickerDomain.WEB:
+                from astronverse.picker.strategy.web_strategy import web_default_strategy
+
+                strategy_func = web_default_strategy
+            else:
+                raise NotImplementedError(
+                    f"Linux 不支持 {strategy_svc.domain.value} 拾取，请使用 AT-SPI 或 WEB 重新拾取"
+                )
         elif strategy_svc.domain == PickerDomain.UIA:
             from astronverse.picker.strategy.uia_strategy import uia_default_strategy
 
@@ -82,7 +101,7 @@ class Strategy:
             try:
                 if strategy_svc.domain == PickerDomain.WEB:
                     result = strategy_func(self.service_context, strategy_svc)  # 只传 2 个参数
-                elif strategy_svc.domain == PickerDomain.UIA:
+                elif strategy_svc.domain == PickerDomain.UIA and sys.platform == "win32":
                     result = strategy_func(strategy_svc)
                 else:
                     result = strategy_func(self.service_context, self, strategy_svc)

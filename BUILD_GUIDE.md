@@ -32,6 +32,7 @@
 |---------|---------|---------|
 | Windows | 10/11 | ✅ Primary Support |
 | macOS | 13+ (Apple Silicon / Intel) | 🧪 Experimental |
+| Linux | Ubuntu 24.04 GNOME + X11 | 🧪 Experimental (Wayland deferred) |
 
 ### Hardware Configuration
 | Component | Minimum | Recommended |
@@ -525,7 +526,7 @@ Execute `build.sh` from the repository root:
 # 🚀 Full build (engine + frontend desktop app)
 ./build.sh
 
-# ⏭️ Build engine only (generates resources/python_core.tar.gz)
+# ⏭️ Build engine only (generates resources/<arch>/python_core.tar.gz on macOS)
 ./build.sh --skip-frontend
 
 # ⏭️ Build frontend only
@@ -539,8 +540,8 @@ Execute `build.sh` from the repository root:
 1. ✅ Automatically prepares standalone Python 3.13 via `uv` (or uses `-p`) in `build/python_core`
 2. ✅ Builds all RPA engine workspace wheels into `build/dist`
 3. ✅ Installs wheels and dependencies into `build/python_core`
-4. ✅ Compresses Python core into `resources/python_core.tar.gz` and writes SHA-256 checksum to `resources/python_core.tar.gz.sha256.txt`
-5. ✅ Installs frontend dependencies and builds desktop app (`pnpm run build:mac` on macOS, `pnpm run build:linux` on Linux)
+4. ✅ Compresses Python core into `resources/<arch>/python_core.tar.gz` on macOS (`arm64` or `x64` matching the build machine) or `resources/python_core.tar.gz` on Linux, and writes a SHA-256 checksum next to the archive. electron-builder extraResources uses `${arch}` so each Mac DMG embeds matching-arch Python. A dual-arch release needs both archives (build once on Apple Silicon and once on Intel, then copy `resources/arm64` and `resources/x64` together before packaging).
+5. ✅ Installs frontend dependencies and builds desktop app. On macOS, `build.sh` only packages arches that already have `resources/<arch>/python_core.tar.gz`. On Linux it runs `pnpm run build:linux`.
 
 ##### 3️⃣ Install Application Package
 
@@ -561,6 +562,15 @@ On macOS, security and permission settings require attention:
   - **Screen Recording** (屏幕录制): Grant permission to **星辰RPA** / **astron-rpa** (required for desktop screen capture and visual element picking)
   - **Input Monitoring** (输入监控): Grant permission to **星辰RPA** / **astron-rpa** (required for global shortcuts and mouse/keyboard hooks)
 - **ffmpeg**: Screen recording uses a bundled `resources/ffmpeg` binary if present, otherwise `PATH` (`brew install ffmpeg`). `ffmpeg.exe` is Windows-only and is not copied into the Mac app.
+
+##### 4️⃣b Linux (Ubuntu 24.04 GNOME + X11) First Launch
+
+Linux client support is experimental and limited to GNOME on X11. Wayland coordinate mapping is deferred.
+
+- **Install the `.deb`**: it depends on `gir1.2-atspi-2.0`, `at-spi2-core`, `xdotool`, `x11-utils`, `wmctrl`, and `ffmpeg`. The postinst writes Chrome managed policy to `/etc/opt/chrome/policies/managed` and the extension JSON under `/opt/google/chrome/extensions`. Use official Google Chrome (`google-chrome-stable`).
+- **AT-SPI**: the client enables GNOME `toolkit-accessibility` and writes `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1` to `~/.config/environment.d/90-astron.conf` (no sudo, no `/etc/profile`). Log out and back in once after first run.
+- **Session**: pick and highlight assume X11 (`x11grab` for recording). Switch the login session to Ubuntu on Xorg if the default is Wayland.
+- **ffmpeg**: system package (`apt install ffmpeg`); not a bundled `.exe`.
 
 ##### 5️⃣ Configure Server Address
 

@@ -5,7 +5,7 @@ import { generateUUID } from '@/utils/common'
 import type { CustomValueType, DirectoryAttrItem, DirectoryItem, EleVariableType, VarDataType, WebElementType } from '@/types/resource'
 import { PATTERN_RULES, PATTERN_RULES_TYPE, PATTERN_RULES_UIA } from '@/views/Arrange/config/pick'
 
-export type ElementT = 'uia' | 'ax' | 'web' | 'cv' | 'jab' | 'sap'
+export type ElementT = 'uia' | 'ax' | 'atspi' | 'web' | 'cv' | 'jab' | 'sap'
 
 /**
  *  元素信息格式化转换
@@ -39,6 +39,7 @@ function elementDirectoryFormatV1(type: ElementT, data: any) {
   const tFns = {
     uia: elementDirectoryFormatV1Uia,
     ax: elementDirectoryFormatV1Uia,
+    atspi: elementDirectoryFormatV1Uia,
     web: elementDirectoryFormatV1Web,
     jab: elementDirectoryFormatV1Jab,
   }
@@ -52,6 +53,7 @@ function elementDirectoryFormatV1Recover(type: ElementT, data: any) {
   const tFns = {
     uia: elementDirectoryFormatV1UiaRecover,
     ax: elementDirectoryFormatV1UiaRecover,
+    atspi: elementDirectoryFormatV1UiaRecover,
     web: elementDirectoryFormatV1WebRecover,
     jab: elementDirectoryFormatV1JabRecover,
   }

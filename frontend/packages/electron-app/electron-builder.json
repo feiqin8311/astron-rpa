@@ -43,9 +43,23 @@
     "entitlementsInherit": "build/entitlements.mac.plist",
     "extraResources": [
       {
+        "from": "../../../resources/${arch}",
+        "to": ".",
+        "filter": ["python_core.tar.gz", "python_core.tar.gz.sha256.txt"]
+      },
+      {
         "from": "../../../resources",
         "to": ".",
-        "filter": ["**/*", "!*.exe", "!*.7z", "!*.7z.sha256.txt"]
+        "filter": [
+          "**/*",
+          "!*.exe",
+          "!*.7z",
+          "!*.7z.sha256.txt",
+          "!arm64${/*}",
+          "!x64${/*}",
+          "!python_core.tar.gz",
+          "!python_core.tar.gz.sha256.txt"
+        ]
       }
     ],
     "extendInfo": {
@@ -73,7 +87,24 @@
         "from": "../../../resources",
         "to": "resources",
         "filter": ["**/*", "!*.exe"]
+      },
+      {
+        "from": "../../../engine/shared/astronverse-browser-plugin/src/astronverse/browser_plugin/plugins",
+        "to": "resources/browser-plugins"
       }
+    ]
+  },
+  "deb": {
+    "afterInstall": "build/linux/after-install.sh",
+    "depends": [
+      "gir1.2-atspi-2.0",
+      "at-spi2-core",
+      "libgirepository-1.0-1",
+      "xdotool",
+      "x11-utils",
+      "wmctrl",
+      "ffmpeg",
+      "libgtk-3-0"
     ]
   },
   "nsis": {

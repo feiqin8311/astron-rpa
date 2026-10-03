@@ -23,11 +23,27 @@ def win_env_check(svc):
             pass
 
 
+def _write_linux_environment_d() -> bool:
+    """User-level environment.d; no sudo, no /etc/profile."""
+    from pathlib import Path
+
+    conf_path = Path.home() / ".config" / "environment.d" / "90-astron.conf"
+    conf_path.parent.mkdir(parents=True, exist_ok=True)
+    wanted = "QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1"
+    existing = conf_path.read_text(encoding="utf-8") if conf_path.exists() else ""
+    if wanted in existing:
+        return False
+    prefix = "" if not existing or existing.endswith("\n") else "\n"
+    conf_path.write_text(existing + prefix + wanted + "\n", encoding="utf-8")
+    return True
+
+
 def linux_env_check():
-    """linux环境检测"""
+    """linux环境检测：GNOME toolkit-accessibility + user environment.d。"""
     if not sys.platform.startswith("linux"):
         return
 
+    need_relogin = False
     try:
         result = subprocess.run(
             [
@@ -43,9 +59,6 @@ def linux_env_check():
             errors="replace",
         )
         if result.stdout.strip() != "true":
-            emit_to_front(EmitType.ALERT, msg={"msg": "首次安装，请手动重启电脑后重启打开", "type": "normal"})
-
-            # 环境写入
             subprocess.run(
                 [
                     "gsettings",
@@ -58,32 +71,21 @@ def linux_env_check():
                 encoding="utf-8",
                 errors="replace",
             )
-            # qt写入
-            result = subprocess.run(
-                ["grep", "^export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1", "/etc/profile"],
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if not result.stdout:
-                subprocess.run(
-                    [
-                        "sudo",
-                        "sh",
-                        "-c",
-                        'echo "export QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1" >> /etc/profile',
-                    ],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
+            need_relogin = True
     except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
-        logger.warning("linux_env_check error: %s", e)
+        logger.warning("linux_env_check gsettings: %s", e)
+
+    try:
+        if _write_linux_environment_d():
+            need_relogin = True
+    except OSError as e:
+        logger.warning("linux_env_check environment.d: %s", e)
+
+    if need_relogin:
+        emit_to_front(
+            EmitType.ALERT,
+            msg={"msg": "已开启无障碍支持，请注销或重启后再打开星辰RPA", "type": "normal"},
+        )
 
 
 def mac_env_check():

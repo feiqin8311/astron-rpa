@@ -16,7 +16,11 @@ class BrowserPluginFactory(PluginManager):
     def get_plugin_manager(browser_type: BrowserType, plugin_data: PluginData) -> PluginManagerCore:
         if browser_type == BrowserType.CHROME:
             return ChromiumPluginManager(
-                plugin_data, root_path="/opt/google/chrome", browser_name="google-chrome", process_name="chrome"
+                plugin_data,
+                root_path="/opt/google/chrome",
+                browser_name="google-chrome-stable",
+                process_name="chrome",
+                policy_dir="/etc/opt/chrome/policies/managed",
             )
         elif browser_type == BrowserType.MICROSOFT_EDGE:
             return ChromiumPluginManager(

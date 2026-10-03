@@ -129,6 +129,7 @@ class PickerDomain(Enum):
     MSAA = "msaa"
     AUTO = "auto"  # 拾取的时候 无他
     AX = "ax"
+    ATSPI = "atspi"
 
 
 class PickerType(Enum):

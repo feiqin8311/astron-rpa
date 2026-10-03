@@ -129,7 +129,7 @@ class HotKeyTask:
 
         loop = asyncio.get_running_loop()
 
-        if sys.platform == "darwin":
+        if sys.platform in ("darwin",) or sys.platform.startswith("linux"):
             from pynput.keyboard import GlobalHotKeys
 
             hotkey_expression = to_pynput_hotkey(self.shortcuts)
@@ -146,7 +146,7 @@ class HotKeyTask:
     def force_end_callback(self):
         """该方法进行热键任务回收"""
         logger.info("force_end_callback: removing hotkey listener")
-        if sys.platform == "darwin":
+        if sys.platform in ("darwin",) or sys.platform.startswith("linux"):
             if self._h_handle:
                 self._h_handle.stop()
                 self._h_handle = None

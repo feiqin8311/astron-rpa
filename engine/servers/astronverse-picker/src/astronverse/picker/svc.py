@@ -1,7 +1,6 @@
 """服务上下文管理模块"""
 
 import asyncio
-import platform
 import sys
 import threading
 import time
@@ -95,8 +94,12 @@ class ServiceContext:
 
             self.event_core: IEventCore = EventCore()
             self.picker_core: IPickerCore = PickerCore()
-        elif platform.system() == "Linux":
-            pass
+        elif sys.platform.startswith("linux"):
+            from astronverse.picker.core.event_core_linux import EventCore
+            from astronverse.picker.core.picker_core_linux import PickerCore
+
+            self.event_core: IEventCore = EventCore()
+            self.picker_core: IPickerCore = PickerCore()
 
         # 定住 - 可选模块
         try:

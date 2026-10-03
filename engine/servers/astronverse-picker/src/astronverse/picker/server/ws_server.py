@@ -413,7 +413,7 @@ class WsServer:
 
     def _setup_record_callbacks(self):
         """设置录制事件回调"""
-        if sys.platform == "darwin":
+        if sys.platform != "win32":
             return
         from astronverse.picker.core.recorder_core_win import record_manager
 

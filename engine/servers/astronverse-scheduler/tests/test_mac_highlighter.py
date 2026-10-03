@@ -205,7 +205,7 @@ def test_picker_init_linux_branch_unchanged(monkeypatch):
     picker = Picker(svc)
     picker.init()
     assert picker.highlighter.cmd[1].endswith("linux/RPAHighlighter/cv_match_application_4.0.py")
-    assert picker.app_picker.cmd[-1] == "astronverse.picker_linux"
+    assert picker.app_picker.cmd[-1] == "astronverse.picker"
 
 
 def _free_udp_port() -> int:

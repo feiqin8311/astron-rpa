@@ -41,10 +41,8 @@ from astronverse.word.error import *
 
 if sys.platform == "win32":
     from astronverse.word.core_win import WordDocumentCore
-elif sys.platform == "darwin":
+elif sys.platform == "darwin" or platform.system() == "Linux":
     from astronverse.word.core_docx import WordDocumentCore
-elif platform.system() == "Linux":
-    from astronverse.word.core_unix import WordDocumentCore
 else:
     raise NotImplementedError("Your platform (%s) is not supported by (%s)." % (platform.system(), "word"))
 

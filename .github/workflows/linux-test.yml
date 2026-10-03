@@ -1,0 +1,65 @@
+name: Linux client tests
+
+on:
+  pull_request:
+    paths:
+      - "engine/**"
+      - "frontend/packages/electron-app/build/linux/**"
+      - "frontend/packages/electron-app/electron-builder.json"
+      - ".github/workflows/linux-test.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: linux-test-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python-linux:
+    name: Python Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install AT-SPI / GI build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gir1.2-atspi-2.0 \
+            at-spi2-core \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            pkg-config \
+            xdotool \
+            x11-utils \
+            wmctrl \
+            xvfb
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: "3.13"
+          cache-dependency-glob: engine/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --project engine --dev --frozen
+
+      - name: Run Linux unit tests
+        run: >
+          xvfb-run -a uv run --project engine --no-sync --with pytest --with pytest-asyncio
+          pytest --import-mode=importlib -q
+          engine/shared/astronverse-locator/tests/test_atspi_common.py
+          engine/shared/astronverse-locator/tests/test_atspi_locator.py
+          engine/servers/astronverse-picker/tests/test_event_core_linux.py
+          engine/servers/astronverse-picker/tests/test_app_init_linux.py
+          engine/servers/astronverse-scheduler/tests/test_macos_startup.py
+          engine/servers/astronverse-scheduler/tests/test_mac_highlighter.py
+          engine/shared/astronverse-browser-plugin/tests/test_unix_plugin.py
+          engine/servers/astronverse-trigger/tests/test_hotkey_mapping.py

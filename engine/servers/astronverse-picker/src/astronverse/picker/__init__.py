@@ -220,6 +220,7 @@ class PickerDomain(Enum):
 
     UIA = "uia"
     AX = "ax"
+    ATSPI = "atspi"
     WEB = "web"
     WEB_IE = "web_ie"  # 拾取的时候 web的type是web, 而不是web_ie
     JAB = "jab"
@@ -311,13 +312,13 @@ class APP(Enum):
         if not name:
             return APP.Unknown
         name_lower = name.lower()
-        if name_lower in ("google chrome", "chrome"):
+        if name_lower in ("google chrome", "chrome", "google-chrome", "google-chrome-stable"):
             return APP.Chrome
-        if name_lower in ("microsoft edge", "edge", "msedge"):
+        if name_lower in ("microsoft edge", "edge", "msedge", "microsoft-edge", "microsoft-edge-stable"):
             return APP.Edge
-        if name_lower == "chromium":
+        if name_lower in ("chromium", "chromium-browser"):
             return APP.Chromium
-        if name_lower == "firefox":
+        if name_lower in ("firefox", "firefox-esr"):
             return APP.Firefox
 
         try:
