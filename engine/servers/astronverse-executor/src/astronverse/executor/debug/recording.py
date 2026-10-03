@@ -1,4 +1,6 @@
 import os
+import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -7,6 +9,8 @@ from datetime import datetime, timedelta
 
 from astronverse.executor.logger import logger
 
+_AVFOUNDATION_SCREEN_INDEX = None
+
 
 def folder_empty(folder_path) -> bool:
     contents = os.listdir(folder_path)
@@ -14,6 +18,37 @@ def folder_empty(folder_path) -> bool:
         return True
     else:
         return False
+
+
+def parse_avfoundation_screen_index(text: str):
+    match = re.search(r"\[(\d+)\]\s+Capture screen", text)
+    return match.group(1) if match else None
+
+
+def resolve_darwin_ffmpeg(resource_dir):
+    bundled = os.path.join(os.path.abspath(resource_dir), "ffmpeg")
+    if os.path.isfile(bundled) and os.access(bundled, os.X_OK):
+        return bundled
+    return shutil.which("ffmpeg")
+
+
+def avfoundation_screen_index(ffmpeg_bin):
+    global _AVFOUNDATION_SCREEN_INDEX
+    if _AVFOUNDATION_SCREEN_INDEX is not None:
+        return _AVFOUNDATION_SCREEN_INDEX
+    try:
+        proc = subprocess.run(
+            [ffmpeg_bin, "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        combined = (proc.stderr or "") + (proc.stdout or "")
+        idx = parse_avfoundation_screen_index(combined)
+    except Exception:
+        idx = None
+    _AVFOUNDATION_SCREEN_INDEX = idx or "1"
+    return _AVFOUNDATION_SCREEN_INDEX
 
 
 class RecordingTool:
@@ -53,9 +88,15 @@ class RecordingTool:
         try:
             if not self.config.get("open"):
                 return
-            url = os.path.join(os.path.abspath(self.svc.conf.resource_dir), "ffmpeg.exe")
-            if not os.path.exists(url):
-                return
+            if sys.platform == "darwin":
+                url = resolve_darwin_ffmpeg(self.svc.conf.resource_dir)
+                if not url:
+                    logger.warning("ffmpeg not found, skip recording")
+                    return
+            else:
+                url = os.path.join(os.path.abspath(self.svc.conf.resource_dir), "ffmpeg.exe")
+                if not os.path.exists(url):
+                    return
 
             self.start_time = int(time.time())
             if sys.platform == "win32":
@@ -71,6 +112,31 @@ class RecordingTool:
                     "3",
                     "-i",
                     "desktop",
+                    "-crf",
+                    "23",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-vf",
+                    "scale=iw*75/100:ih*75/100,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+                    "{}".format(self.local_raw_file),
+                    "-y",
+                ]
+            elif sys.platform == "darwin":
+                screen_index = avfoundation_screen_index(url)
+                exec_args_1 = [
+                    url,
+                    "-thread_queue_size",
+                    "16",
+                    "-f",
+                    "avfoundation",
+                    "-capture_cursor",
+                    "1",
+                    "-rtbufsize",
+                    "500M",
+                    "-framerate",
+                    "3",
+                    "-i",
+                    "{}:none".format(screen_index),
                     "-crf",
                     "23",
                     "-pix_fmt",

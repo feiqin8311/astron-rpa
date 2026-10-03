@@ -1,17 +1,24 @@
 import ast
+import sys
 import time
 from itertools import zip_longest
 
-import win32clipboard as cv
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
 from astronverse.actionlib.types import PATH
 from astronverse.excel import *
-from astronverse.excel.core_win.application import Application
-from astronverse.excel.core_win.range import Range
-from astronverse.excel.core_win.worksheet import Worksheet
 from astronverse.excel.excel_obj import ExcelObj
 from astronverse.excel.utils import *
+
+if sys.platform == "win32":
+    import win32clipboard as cv
+    from astronverse.excel.core_win.application import Application
+    from astronverse.excel.core_win.range import Range
+    from astronverse.excel.core_win.worksheet import Worksheet
+else:
+    from astronverse.excel.core_openpyxl.application import Application
+    from astronverse.excel.core_openpyxl.range import Range
+    from astronverse.excel.core_openpyxl.worksheet import Worksheet
 
 
 class Excel:
@@ -64,6 +71,23 @@ class Excel:
         ],
     )
     def get_excel(file_name) -> ExcelObj:
+        if sys.platform != "win32":
+            application = Application.init_app(
+                default_application=ApplicationType.EXCEL,
+                visible_flag=None,
+                retry=0,
+                retry_delay=0,
+                prefer_existing=True,
+            )
+            excel_obj = Application.get_existing_workbook(application, match_name=file_name)
+            if excel_obj:
+                return excel_obj
+            raise Exception(
+                "不存在已打开的Excel文件:{}（macOS 为文件模式，仅匹配本组件已打开的工作簿，不会附着 Excel.app）".format(
+                    file_name
+                )
+            )
+
         excel_flag, excel_pid, wps_flag, wps_pid = get_excel_processes()
         if not excel_flag and not wps_flag:
             raise Exception("未检测到wps或office打开！")
@@ -292,16 +316,19 @@ class Excel:
             if save_type_all == SaveType_ALL.SAVE:
                 save_changes = True
 
-            excel_flag, excel_pid, wps_flag, wps_pid = get_excel_processes()
-            if wps_flag:
-                Application.quit_app(default_application=ApplicationType.WPS, save_changes=save_changes)
-            if excel_flag:
-                Application.quit_app(default_application=ApplicationType.EXCEL, save_changes=save_changes)
-            if pkill_flag:
-                if excel_pid:
-                    psutil.Process(excel_pid).kill()
-                if wps_pid:
-                    psutil.Process(wps_pid).kill()
+            if sys.platform != "win32":
+                Application.quit_app(save_changes=save_changes)
+            else:
+                excel_flag, excel_pid, wps_flag, wps_pid = get_excel_processes()
+                if wps_flag:
+                    Application.quit_app(default_application=ApplicationType.WPS, save_changes=save_changes)
+                if excel_flag:
+                    Application.quit_app(default_application=ApplicationType.EXCEL, save_changes=save_changes)
+                if pkill_flag:
+                    if excel_pid:
+                        psutil.Process(excel_pid).kill()
+                    if wps_pid:
+                        psutil.Process(wps_pid).kill()
         else:
             if not excel:
                 raise Exception("文档不存在，请先打开文档！")
@@ -748,14 +775,23 @@ class Excel:
 
         r_obj = Worksheet.get_range(worksheet, cell)
         Range.copy_range(r_obj)
-        try:
-            cv.OpenClipboard()
-            return cv.GetClipboardData(cv.CF_UNICODETEXT)
-        finally:
+        if sys.platform == "win32":
             try:
-                cv.CloseClipboard()
-            except Exception as e:
-                pass
+                cv.OpenClipboard()
+                return cv.GetClipboardData(cv.CF_UNICODETEXT)
+            finally:
+                try:
+                    cv.CloseClipboard()
+                except Exception as e:
+                    pass
+        try:
+            import pyperclip
+
+            return pyperclip.paste()
+        except Exception:
+            import subprocess
+
+            return subprocess.check_output(["pbpaste"], text=True)
 
     @staticmethod
     @atomicMg.atomic(

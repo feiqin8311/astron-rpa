@@ -4,10 +4,13 @@ import { parse as parseYAML } from 'yaml'
 import type { IAppConfig } from '@rpa/shared/platform'
 
 import appIcon from '../../../../public/icons/icon.ico?asset'
+import appIconPng from '../../../../public/icons/icon.png?asset'
 
 import { confPath } from './path'
 
-export const APP_ICON_PATH = nativeImage.createFromPath(appIcon)
+export const APP_ICON_PATH = nativeImage.createFromPath(
+  process.platform === 'darwin' ? appIconPng : appIcon,
+)
 
 export const MAIN_WINDOW_LABEL = 'main'
 

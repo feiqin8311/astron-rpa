@@ -1,4 +1,5 @@
 import os
+import sys
 
 import psutil
 from astronverse.baseline.logger.logger import logger
@@ -10,12 +11,27 @@ def get_process_name(pid: int):
 
 
 def get_java_process() -> tuple[list[int], list[str]]:
-    username = os.getenv("USERNAME")
-    if not username:
-        logger.error("无法获取当前用户名")
-        return [], []
+    if sys.platform == "win32":
+        username = os.getenv("USERNAME")
+        if not username:
+            logger.error("无法获取当前用户名")
+            return [], []
 
-    hsperf_dir = os.path.join("C:\\Users", username, "AppData", "Local", "Temp", f"hsperfdata_{username}")
+        hsperf_dir = os.path.join("C:\\Users", username, "AppData", "Local", "Temp", f"hsperfdata_{username}")
+    else:
+        import getpass
+        import tempfile
+
+        try:
+            username = getpass.getuser()
+        except Exception:
+            username = os.getenv("USER", "")
+        if not username:
+            logger.error("无法获取当前用户名")
+            return [], []
+
+        hsperf_dir = os.path.join(tempfile.gettempdir(), f"hsperfdata_{username}")
+
     if not os.path.exists(hsperf_dir):
         logger.error(f"hsperf不存在: {hsperf_dir}")
         return [], []

@@ -15,6 +15,8 @@ class Keyboard:
 
     @staticmethod
     def change_language(language: int):
+        if sys.platform == "darwin":
+            return
         if sys.platform == "win32":
             import win32api
             import win32gui
@@ -99,6 +101,12 @@ class Keyboard:
             return keyboard.type(text)
 
     @staticmethod
+    def _map_key(key):
+        if sys.platform == "darwin" and isinstance(key, str) and key.lower() in ("win", "winleft", "winright"):
+            return "command"
+        return key
+
+    @staticmethod
     def press(keys, presses: int = 1, interval: float = 0.0):
         """
         敲键
@@ -106,6 +114,10 @@ class Keyboard:
         eg2: pyautogui.press('left')
         :param keys: 可以是数组 https://pyautogui.readthedocs.io/en/latest/keyboard.html#keyboard-keys
         """
+        if isinstance(keys, (list, tuple)):
+            keys = [Keyboard._map_key(k) for k in keys]
+        else:
+            keys = Keyboard._map_key(keys)
         return pyautogui.press(keys=keys, presses=presses, interval=interval)
 
     @staticmethod
@@ -114,6 +126,7 @@ class Keyboard:
         热键
         eg: pyautogui.hotkey('ctrl', 'shift', 'esc')
         """
+        args = tuple(Keyboard._map_key(k) for k in args)
         return pyautogui.hotkey(*args, **kwargs)
 
     @staticmethod
@@ -121,7 +134,7 @@ class Keyboard:
         """
         按键
         """
-        return pyautogui.keyDown(key=key)
+        return pyautogui.keyDown(key=Keyboard._map_key(key))
 
     @staticmethod
     def key_up(key):
@@ -130,7 +143,7 @@ class Keyboard:
         :param key: 键 https://pyautogui.readthedocs.io/en/latest/keyboard.html#keyboard-keys
         :return:
         """
-        return pyautogui.keyUp(key=key)
+        return pyautogui.keyUp(key=Keyboard._map_key(key))
 
     @staticmethod
     def get_drive_path():

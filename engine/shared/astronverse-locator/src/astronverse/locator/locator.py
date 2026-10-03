@@ -82,6 +82,12 @@ def sap_factory_callback():
         return uia_factory.find
 
 
+def ax_factory_callback():
+    from astronverse.locator.core.ax_locator import ax_factory
+
+    return ax_factory.find
+
+
 class LocatorManager:
     """管理器"""
 
@@ -92,6 +98,7 @@ class LocatorManager:
             PickerDomain.MSAA.value: [msaa_factory_callback],
             PickerDomain.JAB.value: [jab_factory_callback],
             PickerDomain.SAP.value: [sap_factory_callback],
+            "ax": [ax_factory_callback],
         }
 
     @staticmethod

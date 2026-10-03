@@ -37,6 +37,13 @@ export const useAppConfigStore = defineStore('appConfig', () => {
   const { state: buildInfo } = useAsyncState<string>(utilsManager.getBuildInfo, '')
   // 系统环境
   const { state: systemInfo } = useAsyncState<string>(utilsManager.getSystemEnv, '')
+  // Electron sends its environment details after the renderer loads, so use its
+  // navigator platform as a fallback while keeping plain browser mode neutral.
+  const electronPlatform = utilsManager.getAppEnv() === 'electron' && typeof navigator !== 'undefined'
+    ? navigator.platform
+    : ''
+  const isMac = computed(() => /\bdarwin\b/i.test(systemInfo.value) || /mac/i.test(electronPlatform))
+  const isWindows = computed(() => /\bwin32\b/i.test(systemInfo.value) || /win/i.test(electronPlatform))
   // 用户目录
   const { state: userPath } = useAsyncState<string>(utilsManager.getUserPath, '')
   // 应用配置
@@ -149,6 +156,8 @@ export const useAppConfigStore = defineStore('appConfig', () => {
 
   return {
     browserPlugins,
+    isMac,
+    isWindows,
     appInfo,
     updaterState,
     checkUpdate,

@@ -15,12 +15,16 @@
 
 ## 🔧 Installation & Deployment
 
-### Q: Can the open-source client run on Linux?
+### Q: Can the open-source client run on Linux or macOS?
 
-**A:** ❌ **Not yet!** The open-source version of Astron RPA client currently only supports Windows systems.
+**A:** Linux is not available yet. macOS is experimental: build with `./build.sh` on a Mac, grant Accessibility / Screen Recording / Input Monitoring, and install `ffmpeg` (`brew install ffmpeg` or place a `ffmpeg` binary in `resources/` before packaging).
 
 **Supported Systems:**
-- ✅ Windows 10/11
+- ✅ Windows 10/11 (primary)
+- 🧪 macOS 13+ (experimental, Apple Silicon and Intel)
+- ❌ Linux client (deferred)
+
+Windows-only capabilities (no Mac equivalent): IE, SAP COM, Kingdee/Yonyou COM, VK.exe driver-level keyboard, Access ODBC, 360 browsers, Excel.app/Word.app live COM (macOS uses openpyxl / python-docx file mode). Notarization requires an Apple Developer certificate and is not part of the unsigned experimental build.
 
 ### Q: 🆕 Is it normal for the server atlas container to exit automatically after starting?
 

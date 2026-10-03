@@ -1,11 +1,98 @@
 import asyncio
+import re
+import sys
 
 from astronverse.trigger.core.logger import logger
-from keyboard import add_hotkey, remove_hotkey
+
+KEY_MAP = {
+    # Modifiers
+    "ctrl": "<ctrl>",
+    "control": "<ctrl>",
+    "alt": "<alt>",
+    "option": "<alt>",
+    "opt": "<alt>",
+    "shift": "<shift>",
+    "win": "<cmd>",
+    "windows": "<cmd>",
+    "cmd": "<cmd>",
+    "command": "<cmd>",
+    "super": "<cmd>",
+    "meta": "<cmd>",
+    # Special keys
+    "esc": "<esc>",
+    "escape": "<esc>",
+    "enter": "<enter>",
+    "return": "<enter>",
+    "space": "<space>",
+    "spacebar": "<space>",
+    "tab": "<tab>",
+    "backspace": "<backspace>",
+    "delete": "<delete>",
+    "del": "<delete>",
+    "up": "<up>",
+    "down": "<down>",
+    "left": "<left>",
+    "right": "<right>",
+    "home": "<home>",
+    "end": "<end>",
+    "page_up": "<page_up>",
+    "pageup": "<page_up>",
+    "page up": "<page_up>",
+    "pgup": "<page_up>",
+    "page_down": "<page_down>",
+    "pagedown": "<page_down>",
+    "page down": "<page_down>",
+    "pgdn": "<page_down>",
+    "caps_lock": "<caps_lock>",
+    "capslock": "<caps_lock>",
+    "caps": "<caps_lock>",
+}
+
+
+def _map_key(key: str) -> str:
+    k = key.strip()
+    if not k:
+        return ""
+    if k.startswith("<") and k.endswith(">") and len(k) > 2:
+        k = k[1:-1].strip()
+    k_lower = k.lower()
+    if k_lower in KEY_MAP:
+        return KEY_MAP[k_lower]
+    if re.match(r"^f([1-9]|1[0-9]|2[0-4])$", k_lower):
+        return f"<{k_lower}>"
+    if len(k) == 1:
+        return k.lower()
+    return f"<{k_lower}>"
+
+
+def to_pynput_hotkey(shortcuts: list[str]) -> str:
+    """
+    将快捷键列表转换为 pynput GlobalHotKeys 格式字符串，例如：
+    ['ctrl', 'alt', 'a'] -> '<ctrl>+<alt>+a'
+    ['Ctrl', 'Shift', 'F1'] -> '<ctrl>+<shift>+<f1>'
+    """
+    if not shortcuts:
+        return ""
+    if isinstance(shortcuts, str):
+        shortcuts = [shortcuts]
+
+    parts = []
+    for item in shortcuts:
+        if not item:
+            continue
+        if "+" in item and item.strip() != "+":
+            sub_items = [p.strip() for p in item.split("+") if p.strip()]
+        else:
+            sub_items = [item.strip()]
+        for key in sub_items:
+            mapped = _map_key(key)
+            if mapped:
+                parts.append(mapped)
+    return "+".join(parts)
 
 
 class HotKeyTask:
-    def __init__(self, shortcuts: list = None, **kwargs):
+    def __init__(self, shortcuts: list | None = None, **kwargs):
         """
         构建热键监听的类
 
@@ -25,8 +112,9 @@ class HotKeyTask:
             except Exception:
                 pass
 
-        def on_hotkey_press(loop):
+        def on_hotkey_press(target_loop=None):
             """loop主要作用于当前事件循环，在同一时间循环下进行任务执行"""
+            active_loop = target_loop if target_loop is not None else loop
             try:
                 is_set = run_event.is_set()
             except Exception as e:
@@ -36,15 +124,33 @@ class HotKeyTask:
             if is_set:
                 logger.info("on_hotkey_press: run_event is set; ignore hotkey")
                 return
-            loop.call_soon_threadsafe(asyncio.create_task, handle_hotkey())
+            active_loop.call_soon_threadsafe(asyncio.create_task, handle_hotkey())
             logger.debug("on_hotkey_press: scheduled handle_hotkey on event loop")
 
         loop = asyncio.get_running_loop()
-        hotkey_expression = "+".join(self.shortcuts)
-        logger.info(f"Registering hotkey '{hotkey_expression}' via keyboard.add_hotkey")
-        self._h_handle = add_hotkey(hotkey_expression, on_hotkey_press, args=(loop,))
+
+        if sys.platform == "darwin":
+            from pynput.keyboard import GlobalHotKeys
+
+            hotkey_expression = to_pynput_hotkey(self.shortcuts)
+            logger.info(f"Registering hotkey '{hotkey_expression}' via pynput.keyboard.GlobalHotKeys")
+            self._h_handle = GlobalHotKeys({hotkey_expression: on_hotkey_press})
+            self._h_handle.start()
+        else:
+            from keyboard import add_hotkey
+
+            hotkey_expression = "+".join(self.shortcuts)
+            logger.info(f"Registering hotkey '{hotkey_expression}' via keyboard.add_hotkey")
+            self._h_handle = add_hotkey(hotkey_expression, on_hotkey_press, args=(loop,))
 
     def force_end_callback(self):
         """该方法进行热键任务回收"""
         logger.info("force_end_callback: removing hotkey listener")
-        remove_hotkey(self._h_handle)
+        if sys.platform == "darwin":
+            if self._h_handle:
+                self._h_handle.stop()
+                self._h_handle = None
+        else:
+            from keyboard import remove_hotkey
+
+            remove_hotkey(self._h_handle)

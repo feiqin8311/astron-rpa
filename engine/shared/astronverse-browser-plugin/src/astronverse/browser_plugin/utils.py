@@ -6,7 +6,12 @@ import re
 import shutil
 import subprocess
 import sys
-import winreg as reg
+from pathlib import Path
+
+if sys.platform == "win32":
+    import winreg as reg
+else:
+    reg = None
 
 import psutil
 from astronverse.baseline.logger.logger import logger
@@ -60,16 +65,40 @@ class FirefoxUtils:
         elif platform.system() == "Darwin":  # macOS
             profile_path = os.path.expanduser("~/Library/Application Support/Firefox")
         else:  # Linux
-            profile_path = os.path.expanduser("~/.mozilla/{0}".format(firefox_command))
+            profile_path = os.path.expanduser(f"~/.mozilla/{firefox_command}")
 
-        config = configparser.ConfigParser()
-        config.read(os.path.join(profile_path, "installs.ini"))
-        sections = config.sections()
-        if sections:
-            default_profile = config[sections[0]]["Default"]
-            return os.path.join(profile_path, default_profile)
-        else:
-            raise FileNotFoundError("Firefox profile not found.")
+        installs_ini = os.path.join(profile_path, "installs.ini")
+        if os.path.exists(installs_ini):
+            config = configparser.ConfigParser()
+            config.read(installs_ini)
+            sections = config.sections()
+            if sections and "Default" in config[sections[0]]:
+                default_profile = config[sections[0]]["Default"]
+                return os.path.join(profile_path, default_profile)
+
+        profiles_ini = os.path.join(profile_path, "profiles.ini")
+        if os.path.exists(profiles_ini):
+            config = configparser.ConfigParser()
+            config.read(profiles_ini)
+            for section in config.sections():
+                if section.startswith("Install") and "Default" in config[section]:
+                    return os.path.join(profile_path, config[section]["Default"])
+            for section in config.sections():
+                if config.has_option(section, "Default") and config.get(section, "Default") == "1":
+                    path = config.get(section, "Path")
+                    is_relative = config.get(section, "IsRelative", fallback="1")
+                    if is_relative == "1":
+                        return os.path.join(profile_path, path)
+                    return path
+            for section in config.sections():
+                if section.startswith("Profile") and config.has_option(section, "Path"):
+                    path = config.get(section, "Path")
+                    is_relative = config.get(section, "IsRelative", fallback="1")
+                    if is_relative == "1":
+                        return os.path.join(profile_path, path)
+                    return path
+
+        raise FileNotFoundError("Firefox profile not found.")
 
     @staticmethod
     def check(firefox_command="firefox"):
@@ -78,15 +107,14 @@ class FirefoxUtils:
             # firefox extensions.json
             extensions_path = os.path.join(default_profile_path, "extensions.json")
             if os.path.exists(extensions_path):
-                with open(extensions_path, encoding="utf-8") as f:
-                    dict_msg = json.loads(f.read())
-                    for addon in dict_msg["addons"]:
-                        if addon["id"] == FirefoxUtils.firefox_plugin_id:
+                dict_msg = json.loads(Path(extensions_path).read_text(encoding="utf-8"))
+                for addon in dict_msg["addons"]:
+                    if addon["id"] == FirefoxUtils.firefox_plugin_id:
+                        return True, addon["version"]
+                    for file_id in FirefoxUtils.firefox_plugin_file_ids:
+                        if addon["sourceURI"] and file_id in addon["sourceURI"]:
                             return True, addon["version"]
-                        for file_id in FirefoxUtils.firefox_plugin_file_ids:
-                            if addon["sourceURI"] and file_id in addon["sourceURI"]:
-                                return True, addon["version"]
-                    return False, ""
+                return False, ""
             else:
                 return False, ""
         except FileNotFoundError:
@@ -99,6 +127,8 @@ class Registry:
         """
         check key exists
         """
+        if reg is None:
+            return False
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -115,13 +145,15 @@ class Registry:
         """
         create key
         """
+        if reg is None:
+            raise NotImplementedError("Registry is only supported on Windows")
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
             head = reg.HKEY_CURRENT_USER
         keys = key_path.split("\\")
         head_key = reg.OpenKey(head, keys[0], 0, reg.KEY_ALL_ACCESS)
-        opened_keys = list()
+        opened_keys = []
         opened_keys.append(head_key)
         for key in keys[1:]:
             head_key = reg.CreateKey(head_key, key)
@@ -135,6 +167,8 @@ class Registry:
         """
         delete key
         """
+        if reg is None:
+            raise NotImplementedError("Registry is only supported on Windows")
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -148,6 +182,8 @@ class Registry:
         """
         add string key value
         """
+        if reg is None:
+            raise NotImplementedError("Registry is only supported on Windows")
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -161,6 +197,8 @@ class Registry:
         """
         add dword key value
         """
+        if reg is None:
+            raise NotImplementedError("Registry is only supported on Windows")
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -174,6 +212,8 @@ class Registry:
         """
         query key value
         """
+        if reg is None:
+            return None, None
         try:
             return reg.QueryValueEx(key, value_name)
         except FileNotFoundError:
@@ -184,6 +224,8 @@ class Registry:
         """
         query all values under key
         """
+        if reg is None:
+            return []
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -208,6 +250,8 @@ class Registry:
         """
         open key
         """
+        if reg is None:
+            raise NotImplementedError("Registry is only supported on Windows")
         if key_type == "machine":
             head = reg.HKEY_LOCAL_MACHINE
         else:
@@ -229,12 +273,19 @@ def kill_process(name: str):
 
 def start_browser(browser_path: str):
     try:
-        os.startfile(browser_path)
+        if sys.platform == "darwin":
+            subprocess.run(["open", browser_path], check=False)
+        elif sys.platform == "win32":
+            os.startfile(browser_path)
+        else:
+            subprocess.run(["xdg-open", browser_path], check=False)
     except Exception:
         pass
 
 
 def get_app_path(name: str):
+    if reg is None:
+        return None
     try:
         app_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{}.exe".format(name)
         key = reg.OpenKey(reg.HKEY_LOCAL_MACHINE, app_path)
@@ -255,20 +306,19 @@ def check_chrome_plugin(preferences_path_list, extension_id):
     """
     for file in preferences_path_list:
         if os.path.exists(file):
-            with open(file, encoding="utf-8") as f:
-                content = f.read()
-                dict_msg = json.loads(content)
-                try:
-                    extension_info = dict_msg.get("extensions", {}).get("settings")
-                    if extension_id in extension_info:
-                        version = extension_info[extension_id].get("manifest", {}).get("version", "")
-                        return True, version
-                except Exception:
-                    # new chrome version use install_signature to manage extensions
-                    version = get_install_signature_extension_version(preferences_path_list, extension_id)
-                    if version:
-                        return True, version
-                    return False, ""
+            content = Path(file).read_text(encoding="utf-8")
+            dict_msg = json.loads(content)
+            try:
+                extension_info = dict_msg.get("extensions", {}).get("settings")
+                if extension_id in extension_info:
+                    version = extension_info[extension_id].get("manifest", {}).get("version", "")
+                    return True, version
+            except Exception:
+                # new chrome version use install_signature to manage extensions
+                version = get_install_signature_extension_version(preferences_path_list, extension_id)
+                if version:
+                    return True, version
+                return False, ""
         else:
             logger.info(f"{file} does not exist")
     return False, ""
@@ -281,15 +331,28 @@ def get_install_signature_extension_version(preferences_path_list, extension_id)
     versions = []
     for preferences_path in preferences_path_list:
         extensions_path = preferences_path.replace("Preferences", "Extensions")
+        if not os.path.exists(extensions_path):
+            continue
         for item in os.listdir(extensions_path):
             if item == extension_id:
                 item_path = os.path.join(extensions_path, item)
-                version = max(os.listdir(item_path), key=lambda v: [int(x) for x in v.split(".")])
+                if not os.path.isdir(item_path):
+                    continue
+                version_dirs = [v for v in os.listdir(item_path) if os.path.isdir(os.path.join(item_path, v))]
+                if not version_dirs:
+                    continue
+                version = max(
+                    version_dirs,
+                    key=lambda v: [int(x) for x in v.split("_")[0].split(".") if x.isdigit()],
+                )
                 version = version.split("_")[0] if "_" in version else version
                 logger.info(f"{extensions_path}, {version}")
                 versions.append(version)
     if versions:
-        return max(versions, key=lambda v: [int(x) for x in v.split(".")])
+        return max(
+            versions,
+            key=lambda v: [int(x) for x in v.split("_")[0].split(".") if x.isdigit()],
+        )
     return ""
 
 
@@ -299,44 +362,41 @@ def remove_browser_setting(preferences_path_list, secure_preferences, extension_
     """
     for file in preferences_path_list:
         if os.path.exists(file):
-            with open(file, encoding="utf8") as f:
-                content = f.read()
-                dict_msg = json.loads(content)
-                uninstall_list = (
-                    dict_msg.get("extensions").get("external_uninstalls", []) if dict_msg.get("extensions") else []
-                )
-                is_update = False
-                if extension_id in uninstall_list:
-                    uninstall_list.remove(extension_id)
-                    is_update = True
+            content = Path(file).read_text(encoding="utf-8")
+            dict_msg = json.loads(content)
+            uninstall_list = (
+                dict_msg.get("extensions").get("external_uninstalls", []) if dict_msg.get("extensions") else []
+            )
+            is_update = False
+            if extension_id in uninstall_list:
+                uninstall_list.remove(extension_id)
+                is_update = True
 
-                invalid_ids = (
-                    dict_msg.get("install_signature").get("invalid_ids", [])
-                    if dict_msg.get("install_signature")
-                    else []
-                )
-                if extension_id in invalid_ids:
-                    invalid_ids.remove(extension_id)
-                    is_update = True
+            invalid_ids = (
+                dict_msg.get("install_signature").get("invalid_ids", []) if dict_msg.get("install_signature") else []
+            )
+            if extension_id in invalid_ids:
+                invalid_ids.remove(extension_id)
+                is_update = True
 
-                apps = dict_msg.get("updateclientdata").get("apps", {}) if dict_msg.get("updateclientdata") else {}
-                if extension_id in apps:
-                    del apps[extension_id]
-                    is_update = True
+            apps = dict_msg.get("updateclientdata").get("apps", {}) if dict_msg.get("updateclientdata") else {}
+            if extension_id in apps:
+                del apps[extension_id]
+                is_update = True
 
-                for old_id in old_extension_ids:
-                    extension_info = dict_msg.get("extensions", {}).get("settings", {}).get(old_id, None)
-                    if extension_info is not None:
-                        del dict_msg["extensions"]["settings"][old_id]
-
-                extension_info = dict_msg.get("extensions", {}).get("settings", {}).get(extension_id, None)
+            for old_id in old_extension_ids:
+                extension_info = dict_msg.get("extensions", {}).get("settings", {}).get(old_id, None)
                 if extension_info is not None:
-                    del dict_msg["extensions"]["settings"][extension_id]
-                    is_update = True
+                    del dict_msg["extensions"]["settings"][old_id]
 
-                if is_update:
-                    with open(file, "w", encoding="utf8") as f:
-                        json.dump(dict_msg, f)
+            extension_info = dict_msg.get("extensions", {}).get("settings", {}).get(extension_id, None)
+            if extension_info is not None:
+                del dict_msg["extensions"]["settings"][extension_id]
+                is_update = True
+
+            if is_update:
+                with open(file, "w", encoding="utf8") as f:
+                    json.dump(dict_msg, f)
 
     if os.path.exists(secure_preferences):
         os.remove(secure_preferences)
@@ -382,7 +442,7 @@ def get_profile_list(base_path):
             item_path = os.path.join(base_path, item)
             if os.path.isdir(item_path):
                 if item == "Default" or item.startswith("Profile"):
-                    profile_list.append(base_path + "\\" + item + "\\Preferences")
+                    profile_list.append(os.path.join(base_path, item, "Preferences"))
     return profile_list
 
 
@@ -394,7 +454,7 @@ def get_old_extension_file_list(base_path, old_extension_ids):
             if os.path.isdir(item_path):
                 if item == "Default" or item.startswith("Profile"):
                     for ext_id in old_extension_ids:
-                        ext_path = item_path + "\\Extensions\\" + ext_id
+                        ext_path = os.path.join(item_path, "Extensions", ext_id)
                         if os.path.exists(ext_path):
                             file_list.append(ext_path)
     return file_list

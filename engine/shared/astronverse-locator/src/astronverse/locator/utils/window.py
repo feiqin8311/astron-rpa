@@ -1,18 +1,199 @@
 import ctypes
+import sys
+from dataclasses import dataclass
+from typing import Any, Optional, Union
 
 import pyautogui
-import pygetwindow
-import uiautomation as auto
-import win32com
-import win32com.client
-import win32con
-import win32gui
-import win32process
 from astronverse.baseline.logger.logger import logger
 from astronverse.locator import PickerType, Rect
 from astronverse.locator.utils.process import get_process_name
-from pygetwindow._pygetwindow_win import Win32Window, isWindowVisible
-from uiautomation import Control, ControlFromHandle
+
+if sys.platform == "win32":
+    import pygetwindow
+    import uiautomation as auto
+    import win32com
+    import win32com.client
+    import win32con
+    import win32gui
+    import win32process
+    from pygetwindow._pygetwindow_win import Win32Window, isWindowVisible
+    from uiautomation import Control, ControlFromHandle
+else:
+    Control = Any
+    ControlFromHandle = Any
+    Win32Window = Any
+    isWindowVisible = Any  # noqa: N816
+    auto = None
+
+
+@dataclass
+class DarwinWindowControl:
+    NativeWindowHandle: int
+    BoundingRectangle: Rect
+    Name: str = ""
+    ClassName: str = ""
+    ProcessId: int = 0
+
+
+def darwin_cls_is_ax(cls_name: str) -> bool:
+    """Win32 class names have no AX equivalent; AX roles/subroles start with AX."""
+    return bool(cls_name) and str(cls_name).startswith("AX")
+
+
+def darwin_window_name_matches(handler_name: str, name: str) -> bool:
+    if not name:
+        return True
+    return (handler_name or "") == name
+
+
+def darwin_window_cls_matches(handler_cls: str, cls_name: str) -> bool:
+    if not cls_name:
+        return True
+    if not darwin_cls_is_ax(cls_name):
+        return True
+    return (handler_cls or "") == cls_name
+
+
+def _cg_val(window_info: dict, key: str, default: Any = None) -> Any:
+    try:
+        import Quartz
+
+        const = getattr(Quartz, key, None)
+        if const is not None:
+            val = window_info.get(const)
+            if val is not None:
+                return val
+    except Exception:
+        pass
+    return window_info.get(key, default)
+
+
+def darwin_control_from_handle(handle: int) -> Optional[DarwinWindowControl]:
+    """Build DarwinWindowControl from a CGWindowNumber."""
+    if sys.platform != "darwin" or not handle:
+        return None
+    import Quartz
+
+    options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+    window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID) or []
+    matched = None
+    for w in window_list:
+        win_num = _cg_val(w, "kCGWindowNumber", 0)
+        if int(win_num or 0) == int(handle):
+            matched = w
+            break
+    if matched is None:
+        return None
+    bounds = _cg_val(matched, "kCGWindowBounds", {}) or {}
+    x = int(bounds.get("X", bounds.get("x", 0)))
+    y = int(bounds.get("Y", bounds.get("y", 0)))
+    w_val = int(bounds.get("Width", bounds.get("width", 0)))
+    h_val = int(bounds.get("Height", bounds.get("height", 0)))
+    pid = int(_cg_val(matched, "kCGWindowOwnerPID", 0) or 0)
+    name = str(_cg_val(matched, "kCGWindowName", "") or "")
+    owner = str(_cg_val(matched, "kCGWindowOwnerName", "") or "")
+    cls_name = ""
+    try:
+        from astronverse.locator.core import ax_common
+
+        app_el = ax_common.app_element(pid)
+        for win in ax_common.app_windows(app_el):
+            title = str(ax_common.ax_attr(win, "AXTitle") or "")
+            rect = ax_common.ax_rect(win)
+            if (title and title == name) or (rect is not None and abs(rect.left - x) <= 2 and abs(rect.top - y) <= 2):
+                if title:
+                    name = title
+                cls_name = str(ax_common.ax_attr(win, "AXSubrole") or ax_common.ax_attr(win, "AXRole") or "")
+                break
+    except Exception:
+        pass
+    return DarwinWindowControl(
+        NativeWindowHandle=int(handle),
+        BoundingRectangle=Rect(x, y, x + w_val, y + h_val),
+        Name=name,
+        ClassName=cls_name or owner,
+        ProcessId=pid,
+    )
+
+
+def _darwin_find_matches(cls_name: str, name: str, app_name: Optional[str] = None) -> list[tuple]:
+    handles = find_app_handles(app_name or "")
+    match_list = []
+    for handle in handles:
+        ctrl = darwin_control_from_handle(handle)
+        if not ctrl:
+            continue
+        handler_name = ctrl.Name or ""
+        handler_class_name = ctrl.ClassName or ""
+        if not darwin_window_name_matches(handler_name, name):
+            continue
+        if not darwin_window_cls_matches(handler_class_name, cls_name):
+            continue
+        match_list.append(
+            (
+                handle,
+                handler_name,
+                handler_class_name,
+                True,
+                darwin_cls_is_ax(cls_name) and handler_class_name == cls_name,
+            )
+        )
+    return match_list
+
+
+def _darwin_pick_handle(match_list: list[tuple], is_desktop_win: bool = False) -> int:
+    if not match_list:
+        return 0
+    if is_desktop_win and len(match_list) > 1:
+        cls_match = [item for item in match_list if item[4]]
+        if cls_match:
+            match_list = cls_match
+    match_list = sorted(match_list, key=lambda item: len(item[1]), reverse=True)
+    return match_list[0][0]
+
+
+def _darwin_pick_handles(match_list: list[tuple], is_desktop_win: bool = False) -> list[int]:
+    if not match_list:
+        return []
+    result = []
+    if is_desktop_win and len(match_list) > 1:
+        cls_match = [item for item in match_list if item[4]]
+        if cls_match:
+            result.append(cls_match[0][0])
+    match_list = sorted(match_list, key=lambda item: len(item[1]), reverse=True)
+    target_name = match_list[0][1]
+    for item in match_list:
+        if item[1] == target_name and item[0] not in result:
+            result.append(item[0])
+    return result
+
+
+def _darwin_show_desktop_rect(rect: Rect, desktop_handle=None):
+    import os
+
+    from astronverse.locator.core import ax_common
+
+    self_pid = os.getpid()
+    for handle in find_app_handles(""):
+        if desktop_handle and handle == desktop_handle:
+            continue
+        if handle in DESKTOP_WINDOW_HANDLES:
+            continue
+        ctrl = darwin_control_from_handle(handle)
+        if not ctrl:
+            continue
+        if ctrl.ProcessId == self_pid:
+            continue
+        if is_desktop_by_handle(handle, ctrl):
+            continue
+        win_rect = ctrl.BoundingRectangle
+        if not win_rect or not win_rect.overlaps(rect):
+            continue
+        app_el = ax_common.app_element(ctrl.ProcessId)
+        for win in ax_common.app_windows(app_el):
+            wr = ax_common.ax_rect(win)
+            if wr and wr.overlaps(rect):
+                ax_common.ax_set_attr(win, "AXMinimized", True)
 
 
 def get_screen_scale_rate_new():
@@ -20,12 +201,19 @@ def get_screen_scale_rate_new():
     根据dpi，获取屏幕的缩放比例
     :return:
     """
-    import ctypes
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        sys_dpi = user32.GetDpiForSystem()
+        return round(sys_dpi / 96, 2)
+    elif sys.platform == "darwin":
+        import AppKit
 
-    user32 = ctypes.windll.user32
-    ctypes.windll.shcore.SetProcessDpiAwareness(2)
-    sys_dpi = user32.GetDpiForSystem()
-    return round(sys_dpi / 96, 2)
+        screen = AppKit.NSScreen.mainScreen()
+        if screen:
+            return float(screen.backingScaleFactor())
+        return 1.0
+    return 1.0
 
 
 def get_screen_scale_rate_runtime():
@@ -33,41 +221,63 @@ def get_screen_scale_rate_runtime():
     实时根据主屏dpi获取到主屏的缩放比
     :return:
     """
-    from ctypes import Structure, c_long, c_uint, pointer, windll
+    if sys.platform == "win32":
+        from ctypes import Structure, c_long, c_uint, pointer, windll
 
-    import win32con
+        import win32con
 
-    try:
+        try:
 
-        class RECT(Structure):
-            _fields_ = [
-                ("left", c_long),
-                ("top", c_long),
-                ("right", c_long),
-                ("bottom", c_long),
-            ]
+            class RECT(Structure):
+                _fields_ = [
+                    ("left", c_long),
+                    ("top", c_long),
+                    ("right", c_long),
+                    ("bottom", c_long),
+                ]
 
-        rect = RECT()
-        user32 = windll.user32
-        rectp = pointer(rect)
-        hmonitor = user32.MonitorFromRect(rectp, win32con.MONITOR_DEFAULTTOPRIMARY)
-        dpix = c_uint()
-        dpiy = c_uint()
-        p_dpix = pointer(dpix)
-        p_dpiy = pointer(dpiy)
-        res = windll.shcore.GetDpiForMonitor(hmonitor, 0, p_dpix, p_dpiy)
-        if res != 0:
+            rect = RECT()
+            user32 = windll.user32
+            rectp = pointer(rect)
+            hmonitor = user32.MonitorFromRect(rectp, win32con.MONITOR_DEFAULTTOPRIMARY)
+            dpix = c_uint()
+            dpiy = c_uint()
+            p_dpix = pointer(dpix)
+            p_dpiy = pointer(dpiy)
+            res = windll.shcore.GetDpiForMonitor(hmonitor, 0, p_dpix, p_dpiy)
+            if res != 0:
+                return get_screen_scale_rate_new()
+            return round(p_dpix.contents.value / 96, 2)
+        except Exception:
             return get_screen_scale_rate_new()
-        return round(p_dpix.contents.value / 96, 2)
-    except Exception as e:
-        return get_screen_scale_rate_new()
+    elif sys.platform == "darwin":
+        # Note on macOS: pyautogui / Quartz event coordinates are in logical points,
+        # so the effective scale for coordinate conversion is 1.0.
+        # Backing scale factor (e.g. 2.0 for Retina) can be read via get_screen_scale_rate_new()
+        # or get_screen_backing_scale_factor().
+        return 1.0
+    return 1.0
+
+
+def get_screen_backing_scale_factor() -> float:
+    """获取 macOS 屏幕的物理/像素 backingScaleFactor (Retina 屏通常为 2.0)"""
+    if sys.platform == "darwin":
+        import AppKit
+
+        screen = AppKit.NSScreen.mainScreen()
+        if screen:
+            return float(screen.backingScaleFactor())
+    return 1.0
 
 
 def get_system_display_size() -> tuple[int, int]:
-    user32 = ctypes.windll.user32
-    width = user32.GetSystemMetrics(0)
-    height = user32.GetSystemMetrics(1)
-    return width, height
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32
+        width = user32.GetSystemMetrics(0)
+        height = user32.GetSystemMetrics(1)
+        return width, height
+    sz = pyautogui.size()
+    return sz.width, sz.height
 
 
 def validate_ui_element_rect(left, top, right, bottom, max_width=2000, max_height=1200):
@@ -159,6 +369,8 @@ def is_desktop_by_cls_and_name(cls_name: str, name: str) -> bool:
         # 其他可能的桌面窗口
         ("Shell_TrayWnd", ""),  # 空名称的任务栏
         ("WorkerW", "Program Manager"),  # 某些版本的桌面窗口
+        ("Finder", "Desktop"),
+        ("AXDesktop", ""),
     ]
 
     return (cls_name, name) in desktop_types
@@ -168,17 +380,25 @@ def is_desktop_by_handle(handle, ctrl: Control) -> bool:
     """
     判断是否是桌面窗口
     """
-    if not ctrl or win32gui.GetParent(handle) != 0:
-        return False
-    return is_desktop_by_cls_and_name(ctrl.ClassName, ctrl.Name)
+    if sys.platform == "win32":
+        if not ctrl or win32gui.GetParent(handle) != 0:
+            return False
+        return is_desktop_by_cls_and_name(ctrl.ClassName, ctrl.Name)
+    elif sys.platform == "darwin":
+        if not ctrl:
+            return False
+        return is_desktop_by_cls_and_name(getattr(ctrl, "ClassName", ""), getattr(ctrl, "Name", ""))
+    return False
 
 
-RPA_HIGHLIGHT_PROCESSES = list()
+RPA_HIGHLIGHT_PROCESSES = []
 RPA_HIGHLIGHT_CHECKED = False
 
 
 def is_rpa_highlight(ctrl: Control) -> bool:
     """判断control是否是高亮窗口"""
+    if sys.platform != "win32":
+        return False
     global RPA_HIGHLIGHT_CHECKED, RPA_HIGHLIGHT_PROCESSES
     if not RPA_HIGHLIGHT_CHECKED:
         RPA_HIGHLIGHT_CHECKED = True
@@ -187,7 +407,7 @@ def is_rpa_highlight(ctrl: Control) -> bool:
             win_control = ControlFromHandle(window._hWnd)
             if getattr(win_control, "AutomationId", None) == "HighlightForm":
                 RPA_HIGHLIGHT_PROCESSES.append(win_control.ProcessId)
-    if ctrl.ProcessId in RPA_HIGHLIGHT_PROCESSES:
+    if ctrl and getattr(ctrl, "ProcessId", None) in RPA_HIGHLIGHT_PROCESSES:
         return True
     return False
 
@@ -196,51 +416,108 @@ def get_pid_by_handle(handle: int):
     """
     从窗口对象中获取程序pid
     """
-    _, proc_pid = win32process.GetWindowThreadProcessId(handle)
-    return proc_pid
+    if sys.platform == "win32":
+        _, proc_pid = win32process.GetWindowThreadProcessId(handle)
+        return proc_pid
+    elif sys.platform == "darwin":
+        import Quartz
+
+        options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+        window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID) or []
+        for w in window_list:
+            win_num = w.get(Quartz.kCGWindowNumber) if hasattr(Quartz, "kCGWindowNumber") else w.get("kCGWindowNumber")
+            if win_num is None:
+                win_num = w.get("kCGWindowNumber")
+            if win_num == handle:
+                pid = (
+                    w.get(Quartz.kCGWindowOwnerPID)
+                    if hasattr(Quartz, "kCGWindowOwnerPID")
+                    else w.get("kCGWindowOwnerPID")
+                )
+                if pid is None:
+                    pid = w.get("kCGWindowOwnerPID", 0)
+                return int(pid or 0)
+        return 0
+    raise NotImplementedError("get_pid_by_handle is not supported on this platform yet")
 
 
 def find_app_handles(app: str) -> list:
     """
     获取指定app所有可视窗口，过滤掉cmd命令
     """
-    handles = []
-    # 获取所有的窗口并遍历
-    # logger.info(f"获取窗口列表: {app}")
-    if app == "iexplore":
-        ie_win = auto.WindowControl(searchDepth=1, ClassName="IEFrame")
-        return [ie_win.NativeWindowHandle]
-    for window in pygetwindow.getWindowsWithTitle(""):
-        try:
-            # logger.info(f"窗口标题: {window.title}")
-            hwnd = window._hWnd
-            pid = get_pid_by_handle(handle=hwnd)
-            if not pid:
-                continue
-
-            app_name = get_process_name(pid)
-            if app_name == "cmd":
-                # 处理命令行窗口
-                if app not in ["cmd", "conhost", "powershell", "bash"]:
+    if sys.platform == "win32":
+        handles = []
+        # 获取所有的窗口并遍历
+        # logger.info(f"获取窗口列表: {app}")
+        if app == "iexplore":
+            ie_win = auto.WindowControl(searchDepth=1, ClassName="IEFrame")
+            return [ie_win.NativeWindowHandle]
+        for window in pygetwindow.getWindowsWithTitle(""):
+            try:
+                # logger.info(f"窗口标题: {window.title}")
+                hwnd = window._hWnd
+                pid = get_pid_by_handle(handle=hwnd)
+                if not pid:
                     continue
-            elif app_name != app:
-                # 普通窗口名称匹配
+
+                app_name = get_process_name(pid)
+                if app_name == "cmd":
+                    # 处理命令行窗口
+                    if app not in ["cmd", "conhost", "powershell", "bash"]:
+                        continue
+                elif app_name != app:
+                    # 普通窗口名称匹配
+                    continue
+
+                if not isWindowVisible(hwnd):
+                    continue
+
+                handles.append(hwnd)
+            except Exception as e:
+                logger.error("获取窗口失败: {}".format(e))
+                continue
+        return handles
+    elif sys.platform == "darwin":
+        import Quartz
+
+        options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+        window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID) or []
+        handles = []
+        for w in window_list:
+            layer = w.get(Quartz.kCGWindowLayer) if hasattr(Quartz, "kCGWindowLayer") else w.get("kCGWindowLayer")
+            if layer is None:
+                layer = w.get("kCGWindowLayer", 0)
+            if layer != 0:
                 continue
 
-            if not isWindowVisible(hwnd):
-                continue
+            owner = str(
+                (
+                    w.get(Quartz.kCGWindowOwnerName)
+                    if hasattr(Quartz, "kCGWindowOwnerName")
+                    else w.get("kCGWindowOwnerName")
+                )
+                or ""
+            )
+            if app.lower() in owner.lower() or owner.lower() in app.lower():
+                win_num = (
+                    w.get(Quartz.kCGWindowNumber) if hasattr(Quartz, "kCGWindowNumber") else w.get("kCGWindowNumber", 0)
+                )
+                if win_num is None:
+                    win_num = w.get("kCGWindowNumber", 0)
+                handles.append(int(win_num))
+        return handles
+    raise NotImplementedError("find_app_handles is not supported on this platform yet")
 
-            handles.append(hwnd)
-        except Exception as e:
-            logger.error("获取窗口失败: {}".format(e))
-            continue
-    return handles
 
-
-DESKTOP_WINDOW_HANDLES = list()
+DESKTOP_WINDOW_HANDLES = []
 
 
 def show_desktop_rect(rect: Rect, desktop_handle=None):
+    if sys.platform == "darwin":
+        _darwin_show_desktop_rect(rect, desktop_handle)
+        return
+    if sys.platform != "win32":
+        raise NotImplementedError("show_desktop_rect is not supported on this platform yet")
     all_windows = pygetwindow.getWindowsWithTitle("")
     for window in all_windows:
         win_control = ControlFromHandle(window._hWnd)
@@ -263,12 +540,18 @@ def show_desktop_rect(rect: Rect, desktop_handle=None):
             window.minimize()
 
 
-def find_window(cls_name: str, name: str, app_name: str = None) -> int:
+def find_window(cls_name: str, name: str, app_name: Optional[str] = None) -> int:
+    if sys.platform == "darwin":
+        return _darwin_pick_handle(
+            _darwin_find_matches(cls_name, name, app_name), is_desktop_by_cls_and_name(cls_name, name)
+        )
+    if sys.platform != "win32":
+        raise NotImplementedError("find_window is not supported on this platform yet")
     global DESKTOP_WINDOW_HANDLES
     is_desktop_win = is_desktop_by_cls_and_name(cls_name, name)
 
     # 通过app_name(进程名称)获取所有的顶层窗口, 并过滤cls_name和name
-    match_list = list()
+    match_list = []
     for handle in find_app_handles(app_name):
         handler_ctrl = ControlFromHandle(handle)
         handler_name = handler_ctrl.Name
@@ -331,7 +614,7 @@ def find_window(cls_name: str, name: str, app_name: str = None) -> int:
     return 0
 
 
-def find_window_handles_list(cls_name: str, name: str, app_name: str = None, picker_type=None) -> list[int]:
+def find_window_handles_list(cls_name: str, name: str, app_name: Optional[str] = None, picker_type=None) -> list[int]:
     """
     获取指定窗口的handle列表，包含cls完全一致的handle和窗口name最长并且一致的handle
 
@@ -340,13 +623,21 @@ def find_window_handles_list(cls_name: str, name: str, app_name: str = None, pic
     :param app_name: 应用程序名称
     :return: handle列表，包含cls完全一致的handle和窗口name最长并且一致的handle
     """
+    if sys.platform == "darwin":
+        if picker_type == PickerType.WINDOW.value:
+            return [find_window(cls_name, name, app_name)]
+        return _darwin_pick_handles(
+            _darwin_find_matches(cls_name, name, app_name), is_desktop_by_cls_and_name(cls_name, name)
+        )
+    if sys.platform != "win32":
+        raise NotImplementedError("find_window_handles_list is not supported on this platform yet")
     if picker_type == PickerType.WINDOW.value:
         return [find_window(cls_name, name, app_name)]
     global DESKTOP_WINDOW_HANDLES
     is_desktop_win = is_desktop_by_cls_and_name(cls_name, name)
 
     # 通过app_name(进程名称)获取所有的顶层窗口, 并过滤cls_name和name
-    match_list = list()
+    match_list = []
     for handle in find_app_handles(app_name):
         handler_ctrl = ControlFromHandle(handle)
         handler_name = handler_ctrl.Name
@@ -426,7 +717,7 @@ def find_window_handles_list(cls_name: str, name: str, app_name: str = None, pic
     return result_handles
 
 
-def find_window_by_enum(cls: str, name: str, app_name: str = None) -> int:
+def find_window_by_enum(cls: str, name: str, app_name: Optional[str] = None) -> int:
     """
     通过枚举窗口 classname 和 name属性获得窗口，返回如果是0则窗口不存在
     与find_window的区别是使用EnumWindows枚举所有窗口，能找到更多窗口
@@ -435,6 +726,10 @@ def find_window_by_enum(cls: str, name: str, app_name: str = None) -> int:
     :param app_name: 程序名字
     :return:
     """
+    if sys.platform == "darwin":
+        return find_window(cls, name, app_name)
+    if sys.platform != "win32":
+        raise NotImplementedError("find_window_by_enum is not supported on this platform yet")
 
     def get_all_windows_by_enum():
         """通过枚举获取所有窗口句柄"""
@@ -529,11 +824,15 @@ def find_window_by_enum(cls: str, name: str, app_name: str = None) -> int:
     return 0
 
 
-def find_window_by_enum_list(cls: str, name: str, app_name: str = None, picker_type=None):
+def find_window_by_enum_list(cls: str, name: str, app_name: Optional[str] = None, picker_type=None):
     """
     通过枚举窗口 classname 和 name属性获得窗口，返回如果是0则窗口不存在
     与find_window的区别是使用EnumWindows枚举所有窗口，能找到更多窗口
     """
+    if sys.platform == "darwin":
+        return find_window_handles_list(cls, name, app_name, picker_type)
+    if sys.platform != "win32":
+        raise NotImplementedError("find_window_by_enum_list is not supported on this platform yet")
     if picker_type == PickerType.WINDOW.value:
         return [find_window_by_enum(cls, name, app_name)]
 
@@ -648,88 +947,291 @@ def find_window_by_enum_list(cls: str, name: str, app_name: str = None, picker_t
 
 
 def top_window(handle: int, ctrl: Control):
-    # 快速结束:桌面窗口不需要置顶
-    if is_desktop_by_handle(handle, ctrl):
-        return
-
-    # 快速结束:IE判断需要添加焦点
-    if ctrl and ctrl.ClassName == "IEFrame":
-        ct = None
-        root_control = auto.GetRootControl()
-        for control, _ in auto.WalkControl(root_control, includeTop=True, maxDepth=1):
-            if control.ClassName == "IEFrame":
-                ct = control
-                break
-        if ct:
-            ct.SetActive()
-        return
-
-    # 恢复和激活窗口
-    try:
-        cur_window = Win32Window(handle)
-        if cur_window.isMinimized:
-            cur_window.restore()
-            cur_window.activate()
-    except Exception as e:
-        pass
-
-    # 置顶
-    if win32gui.IsIconic(handle):
-        win32gui.ShowWindow(handle, win32con.SW_NORMAL)
-    else:
-        if ctrl.ClassName == "SAP_FRONTEND_SESSION":
+    if sys.platform == "win32":
+        # 快速结束:桌面窗口不需要置顶
+        if is_desktop_by_handle(handle, ctrl):
             return
-        # 结合键盘事件
-        shell = win32com.client.Dispatch("WScript.Shell")
-        shell.SendKeys("%")
-        win32gui.SetForegroundWindow(handle)
 
+        # 快速结束:IE判断需要添加焦点
+        if ctrl and ctrl.ClassName == "IEFrame":
+            ct = None
+            root_control = auto.GetRootControl()
+            for control, _ in auto.WalkControl(root_control, includeTop=True, maxDepth=1):
+                if control.ClassName == "IEFrame":
+                    ct = control
+                    break
+            if ct:
+                ct.SetActive()
+            return
 
-def top_browser(handle: int, ctrl: Control):
-    # 快速结束:桌面窗口不需要置顶
-    if is_desktop_by_handle(handle, ctrl):
-        return
+        # 恢复和激活窗口
+        try:
+            cur_window = Win32Window(handle)
+            if cur_window.isMinimized:
+                cur_window.restore()
+                cur_window.activate()
+        except Exception:
+            pass
 
-    # 快速结束:IE判断需要添加焦点
-    if ctrl and ctrl.ClassName == "IEFrame":
-        ct = None
-        root_control = auto.GetRootControl()
-        for control, _ in auto.WalkControl(root_control, includeTop=True, maxDepth=1):
-            if control.ClassName == "IEFrame":
-                ct = control
-                break
-        if ct:
-            ct.SetActive()
-        return
+        # 置顶
+        if win32gui.IsIconic(handle):
+            win32gui.ShowWindow(handle, win32con.SW_NORMAL)
+        else:
+            if ctrl and getattr(ctrl, "ClassName", "") == "SAP_FRONTEND_SESSION":
+                return
+            # 结合键盘事件
+            shell = win32com.client.Dispatch("WScript.Shell")
+            shell.SendKeys("%")
+            win32gui.SetForegroundWindow(handle)
+    elif sys.platform == "darwin":
+        if is_desktop_by_handle(handle, ctrl):
+            return
+        pid = getattr(ctrl, "ProcessId", 0) if ctrl else 0
+        if not pid and handle:
+            pid = get_pid_by_handle(handle)
+        from astronverse.locator.core import ax_common
 
-    # 恢复和激活窗口
-    try:
-        cur_window = Win32Window(handle)
-        if cur_window.isMinimized:
-            cur_window.restore()
-            cur_window.activate()
-    except Exception as e:
-        pass
+        win_el = None
+        name = getattr(ctrl, "Name", "") if ctrl else ""
+        rect = getattr(ctrl, "BoundingRectangle", None) if ctrl else None
+        if pid:
+            app_el = ax_common.app_element(pid)
+            for win in ax_common.app_windows(app_el):
+                title = str(ax_common.ax_attr(win, "AXTitle") or "")
+                wr = ax_common.ax_rect(win)
+                if name and title == name:
+                    win_el = win
+                    break
+                if (
+                    rect is not None
+                    and wr is not None
+                    and abs(wr.left - rect.left) <= 2
+                    and abs(wr.top - rect.top) <= 2
+                ):
+                    win_el = win
+                    break
+            if win_el is None:
+                wins = ax_common.app_windows(app_el)
+                win_el = wins[0] if wins else None
+        if win_el is not None:
+            ax_common.raise_window(win_el, pid)
+            return
+        app = ax_common.running_app(pid) if pid else None
+        if app:
+            from AppKit import NSApplicationActivateIgnoringOtherApps
 
-    # 置顶
-    if win32gui.IsIconic(handle):
-        win32gui.ShowWindow(handle, win32con.SW_NORMAL)
+            app.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+            return
+        raise NotImplementedError("top_window could not activate the target window on macOS")
     else:
-        win32gui.SetWindowPos(
-            handle,
-            win32con.HWND_TOPMOST,
-            0,
-            0,
-            0,
-            0,
-            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE,
+        raise NotImplementedError("top_window is not supported on this platform yet")
+
+
+def top_browser(
+    handle: Union[int, str] = 0,
+    ctrl: Any = None,
+    app_name: Optional[str] = None,
+    **kwargs: Any,
+) -> Any:
+    if sys.platform == "win32":
+        # 快速结束:桌面窗口不需要置顶
+        if is_desktop_by_handle(handle, ctrl):
+            return
+
+        # 快速结束:IE判断需要添加焦点
+        if ctrl and ctrl.ClassName == "IEFrame":
+            ct = None
+            root_control = auto.GetRootControl()
+            for control, _ in auto.WalkControl(root_control, includeTop=True, maxDepth=1):
+                if control.ClassName == "IEFrame":
+                    ct = control
+                    break
+            if ct:
+                ct.SetActive()
+            return
+
+        # 恢复和激活窗口
+        try:
+            cur_window = Win32Window(handle)
+            if cur_window.isMinimized:
+                cur_window.restore()
+                cur_window.activate()
+        except Exception:
+            pass
+
+        # 置顶
+        if win32gui.IsIconic(handle):
+            win32gui.ShowWindow(handle, win32con.SW_NORMAL)
+        else:
+            win32gui.SetWindowPos(
+                handle,
+                win32con.HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE,
+            )
+            win32gui.SetWindowPos(
+                handle,
+                win32con.HWND_NOTOPMOST,
+                0,
+                0,
+                0,
+                0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE,
+            )
+        return None
+    elif sys.platform == "darwin":
+        target_app = app_name or kwargs.get("app")
+        if not target_app and isinstance(handle, str):
+            target_app = handle
+        if not target_app and ctrl is not None:
+            target_app = getattr(ctrl, "ClassName", None) or getattr(ctrl, "Name", None)
+
+        macos_browser_ax_ids = {
+            "chrome": ("Google Chrome", "com.google.Chrome"),
+            "edge": ("Microsoft Edge", "com.microsoft.edgemac"),
+            "firefox": ("Firefox", "org.mozilla.firefox"),
+            "chromium": ("Chromium", "org.chromium.Chromium"),
+        }
+        if target_app:
+            ax_name, ax_bundle = macos_browser_ax_ids.get(str(target_app).lower(), (str(target_app), None))
+            from astronverse.locator.core import ax_common
+
+            for pid in ax_common.find_apps(ax_name, ax_bundle):
+                app_el = ax_common.app_element(pid)
+                for win in ax_common.app_windows(app_el):
+                    if ax_common.ax_attr(win, "AXMinimized"):
+                        continue
+                    rect = ax_common.ax_rect(win)
+                    if rect is None or rect.width() <= 0 or rect.height() <= 0:
+                        continue
+                    ax_common.raise_window(win, pid)
+                    return DarwinWindowControl(
+                        NativeWindowHandle=0,
+                        BoundingRectangle=rect,
+                        Name=str(ax_common.ax_attr(win, "AXTitle") or ""),
+                        ClassName=str(ax_name),
+                        ProcessId=int(pid),
+                    )
+
+        macos_browser_owners_map = {
+            "chrome": ["Google Chrome", "Chrome"],
+            "edge": ["Microsoft Edge"],
+            "firefox": ["Firefox"],
+            "chromium": ["Chromium"],
+            "360se": ["360安全浏览器", "360se"],
+            "360chromex": ["360极速浏览器X", "360ChromeX"],
+        }
+        default_macos_browser_owners = [
+            "Google Chrome",
+            "Microsoft Edge",
+            "Firefox",
+            "Chromium",
+            "Chrome",
+        ]
+
+        if target_app:
+            owners = macos_browser_owners_map.get(str(target_app).lower(), [str(target_app)])
+        else:
+            owners = default_macos_browser_owners
+
+        import AppKit
+        import Quartz
+
+        options = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
+        window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID) or []
+
+        matched_window = None
+        for w in window_list:
+            # Check layer 0 only
+            layer = w.get(Quartz.kCGWindowLayer) if hasattr(Quartz, "kCGWindowLayer") else w.get("kCGWindowLayer")
+            if layer is None:
+                layer = w.get("kCGWindowLayer", 0)
+            if layer != 0:
+                continue
+
+            owner = str(
+                (
+                    w.get(Quartz.kCGWindowOwnerName)
+                    if hasattr(Quartz, "kCGWindowOwnerName")
+                    else w.get("kCGWindowOwnerName")
+                )
+                or ""
+            )
+            if not any(target.lower() == owner.lower() or target.lower() in owner.lower() for target in owners):
+                continue
+
+            bounds = (
+                w.get(Quartz.kCGWindowBounds) if hasattr(Quartz, "kCGWindowBounds") else w.get("kCGWindowBounds")
+            ) or {}
+            width = bounds.get("Width", bounds.get("width", 0))
+            height = bounds.get("Height", bounds.get("height", 0))
+            if width <= 50 or height <= 50:
+                continue
+
+            matched_window = w
+            break
+
+        if not matched_window:
+            return None
+
+        pid = (
+            matched_window.get(Quartz.kCGWindowOwnerPID)
+            if hasattr(Quartz, "kCGWindowOwnerPID")
+            else matched_window.get("kCGWindowOwnerPID")
         )
-        win32gui.SetWindowPos(
-            handle,
-            win32con.HWND_NOTOPMOST,
-            0,
-            0,
-            0,
-            0,
-            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE,
+        if pid is None:
+            pid = matched_window.get("kCGWindowOwnerPID")
+        if pid:
+            try:
+                running_app = AppKit.NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+                if running_app:
+                    running_app.activateWithOptions_(AppKit.NSApplicationActivateIgnoringOtherApps)
+            except Exception:
+                pass
+
+        bounds = (
+            matched_window.get(Quartz.kCGWindowBounds)
+            if hasattr(Quartz, "kCGWindowBounds")
+            else matched_window.get("kCGWindowBounds")
+        ) or {}
+        x = int(bounds.get("X", bounds.get("x", 0)))
+        y = int(bounds.get("Y", bounds.get("y", 0)))
+        w_val = int(bounds.get("Width", bounds.get("width", 0)))
+        h_val = int(bounds.get("Height", bounds.get("height", 0)))
+
+        win_num = (
+            matched_window.get(Quartz.kCGWindowNumber)
+            if hasattr(Quartz, "kCGWindowNumber")
+            else matched_window.get("kCGWindowNumber")
         )
+        if win_num is None:
+            win_num = matched_window.get("kCGWindowNumber", 0)
+
+        win_name = (
+            matched_window.get(Quartz.kCGWindowName)
+            if hasattr(Quartz, "kCGWindowName")
+            else matched_window.get("kCGWindowName")
+        )
+        if win_name is None:
+            win_name = matched_window.get("kCGWindowName", "")
+
+        win_owner = (
+            matched_window.get(Quartz.kCGWindowOwnerName)
+            if hasattr(Quartz, "kCGWindowOwnerName")
+            else matched_window.get("kCGWindowOwnerName")
+        )
+        if win_owner is None:
+            win_owner = matched_window.get("kCGWindowOwnerName", "")
+
+        return DarwinWindowControl(
+            NativeWindowHandle=int(win_num or 0),
+            BoundingRectangle=Rect(x, y, x + w_val, y + h_val),
+            Name=str(win_name or ""),
+            ClassName=str(win_owner or ""),
+            ProcessId=int(pid or 0),
+        )
+    else:
+        raise NotImplementedError("top_browser is not supported on this platform yet")

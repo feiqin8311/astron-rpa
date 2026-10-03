@@ -219,6 +219,7 @@ class PickerDomain(Enum):
     """拾取器类型"""
 
     UIA = "uia"
+    AX = "ax"
     WEB = "web"
     WEB_IE = "web_ie"  # 拾取的时候 web的type是web, 而不是web_ie
     JAB = "jab"
@@ -307,9 +308,19 @@ class APP(Enum):
 
     @classmethod
     def init(cls, name: str):
+        if not name:
+            return APP.Unknown
+        name_lower = name.lower()
+        if name_lower in ("google chrome", "chrome"):
+            return APP.Chrome
+        if name_lower in ("microsoft edge", "edge", "msedge"):
+            return APP.Edge
+        if name_lower == "chromium":
+            return APP.Chromium
+        if name_lower == "firefox":
+            return APP.Firefox
+
         try:
-            if name == "msedge":
-                return APP.Edge
             return cls(name)
         except ValueError:
             return APP.Unknown

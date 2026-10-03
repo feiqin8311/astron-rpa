@@ -138,7 +138,7 @@ export interface PickUseItemType {
   atoms?: Array<any>
 }
 
-type ElementType = 'uia' | 'web' | 'cv' | 'jab' | 'sap'
+type ElementType = 'uia' | 'ax' | 'web' | 'cv' | 'jab' | 'sap'
 type PickerType = 'ELEMENT' | 'WINDOW' | 'POINT' | 'SIMILAR' | 'OTHERS'
 
 export interface ElementData {

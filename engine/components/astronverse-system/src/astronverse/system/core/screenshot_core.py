@@ -20,6 +20,8 @@ class ScreenShotCore:
         """
         if sys.platform == "win32":
             return pyautogui.screenshot(file_path, region=region)
+        elif sys.platform == "darwin":
+            return ScreenShotCore.screenshot_darwin(region=region, file_path=file_path)
         else:
             st = ScreenShotCore.screenshot_linux(file_path, region=region)
             img_byte_arr = io.BytesIO()
@@ -60,6 +62,18 @@ class ScreenShotCore:
         if imageFilename is None:
             os.unlink(tmp_filename)
         return im
+
+    @staticmethod
+    def screenshot_darwin(region=None, file_path: str = ""):
+        """macOS 截图。pyautogui 在 Retina 上返回物理像素，region 为点坐标。"""
+        image = pyautogui.screenshot(region=region)
+        if region is not None and len(region) == 4:
+            width, height = int(region[2]), int(region[3])
+            if width > 0 and height > 0 and image.size != (width, height):
+                image = image.resize((width, height))
+        if file_path:
+            image.save(file_path)
+        return image
 
     @staticmethod
     def screen_size() -> tuple[int, int]:

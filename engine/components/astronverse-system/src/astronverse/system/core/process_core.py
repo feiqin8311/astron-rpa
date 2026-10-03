@@ -1,5 +1,6 @@
 import locale
 import os
+import shlex
 import subprocess
 from abc import ABC, abstractmethod
 
@@ -154,6 +155,87 @@ class ProcessCoreLinux(IProcessCore):
                 text=True,
                 encoding=system_encoding,
                 errors="replace",
+            )
+            return process
+        except Exception as e:
+            raise RuntimeError(f"执行命令失败: {e}")
+
+    @staticmethod
+    def get_pid_list():
+        """
+        获取当前所有pid
+        """
+        return psutil.process_iter(["name"])
+
+    @staticmethod
+    def terminate_pid(pid: int, wait_time: int = 1):
+        try:
+            process = psutil.Process(pid)
+            process.terminate()
+            try:
+                process.wait(timeout=wait_time)
+            except psutil.NoSuchProcess:
+                pass
+        except psutil.AccessDenied:
+            raise ValueError(f"无法终止进程 {pid}：访问被拒绝。")
+        except psutil.TimeoutExpired:
+            raise ValueError(f"进程 {pid} 未在超时时间内终止。")
+        except Exception as e:
+            raise ValueError(f"进程 {pid} 终止时发生错误：{e}")
+
+
+def escape_osascript_shell(cmd: str) -> str:
+    """转义命令以便嵌入 AppleScript 字符串。"""
+    return (cmd or "").replace("\\", "\\\\").replace('"', '\\"')
+
+
+class ProcessCoreMac(IProcessCore):
+    @staticmethod
+    def run_cmd_admin(cmd: str, cwd: str = ""):
+        """
+        以管理员权限运行命令
+        """
+        if not cmd:
+            raise ValueError("命令不能为空")
+
+        try:
+            if cwd:
+                full_cmd = 'cd "{}" && {}'.format(cwd.replace('"', '\\"'), cmd)
+            else:
+                full_cmd = cmd
+            escaped = escape_osascript_shell(full_cmd)
+            process = subprocess.Popen(
+                ["osascript", "-e", 'do shell script "{}" with administrator privileges'.format(escaped)],
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return process
+        except Exception as e:
+            raise RuntimeError(f"执行管理员命令失败: {e}")
+
+    @staticmethod
+    def run_cmd(cmd=None, cwd=None):
+        """
+        以普通权限运行命令
+        """
+        if not cmd:
+            raise ValueError("命令不能为空")
+        if not cwd:
+            cwd = None
+
+        try:
+            if isinstance(cmd, list):
+                cmd = shlex.join(cmd)
+            process = subprocess.Popen(
+                cmd,
+                cwd=cwd,
+                shell=True,
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             return process
         except Exception as e:

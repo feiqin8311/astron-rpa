@@ -6,6 +6,7 @@ requires-python = ">=3.13"
 
 dependencies = [
     "astronverse-actionlib",
+    "astronverse-locator",
     "pywin32; sys_platform == 'win32'",
     "uiautomation; sys_platform == 'win32'",
     "dogtail; sys_platform == 'linux'"
@@ -13,6 +14,7 @@ dependencies = [
 
 [tool.uv.sources]
 astronverse-actionlib = {path = "../../shared/astronverse-actionlib", editable = true}
+astronverse-locator = {path = "../../shared/astronverse-locator", editable = true}
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/astronverse"]

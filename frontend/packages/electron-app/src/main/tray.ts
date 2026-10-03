@@ -1,5 +1,7 @@
 import type { BrowserWindow } from 'electron'
-import { app, dialog, Menu, Tray } from 'electron'
+import { app, dialog, Menu, nativeImage, Tray } from 'electron'
+
+import trayIconPng from '../../../../public/icons/32x32.png?asset'
 
 import { APP_ICON_PATH } from './config'
 
@@ -30,7 +32,10 @@ export function createTray(win: BrowserWindow) {
       },
     },
   ])
-  tray = new Tray(APP_ICON_PATH)
+  const trayIcon = process.platform === 'darwin'
+    ? nativeImage.createFromPath(trayIconPng).resize({ width: 16, height: 16 })
+    : APP_ICON_PATH
+  tray = new Tray(trayIcon)
   tray.setContextMenu(contextMenu)
   tray.on('click', () => {
     if (!win)

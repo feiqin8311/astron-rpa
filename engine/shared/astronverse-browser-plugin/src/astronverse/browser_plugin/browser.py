@@ -8,6 +8,8 @@ if sys.platform == "win32":
     from astronverse.browser_plugin.win import BrowserPluginFactory
 elif sys.platform == "linux":
     from astronverse.browser_plugin.unix import BrowserPluginFactory
+elif sys.platform == "darwin":
+    from astronverse.browser_plugin.mac import BrowserPluginFactory
 else:
     raise Exception(f"Unsupported platform: {sys.platform}")
 

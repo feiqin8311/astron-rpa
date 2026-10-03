@@ -1,5 +1,6 @@
 import base64
 import io
+import sys
 
 import cv2
 import numpy as np
@@ -41,7 +42,10 @@ class CvCore:
             anchor_img = None
             center_coords_anchor = ""
 
-        match_img = pyautogui.screenshot(region=None)
+        if sys.platform == "darwin":
+            match_img = CvCore.screenshot(region=None)
+        else:
+            match_img = pyautogui.screenshot(region=None)
         match_img.save(desktop_filepath_match)
         ratio_w = match_img.width / data["sr"]["screen_w"]
         ratio_h = match_img.height / data["sr"]["screen_h"]
@@ -86,7 +90,15 @@ class CvCore:
         :param file_path: 存储文件位置
         :return:
         """
-        return pyautogui.screenshot(region=region)
+        img = pyautogui.screenshot(region=region)
+        if sys.platform == "darwin":
+            if region is None:
+                target_size = pyautogui.size()
+            else:
+                target_size = (region[2], region[3])
+            if img.size != target_size:
+                img = img.resize(target_size)
+        return img
 
     @staticmethod
     def get_region_position(target_rect, specified_position, horizontal_offset, vertical_offset):

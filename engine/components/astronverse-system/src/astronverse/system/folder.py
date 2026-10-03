@@ -12,11 +12,14 @@ from astronverse.system.utils import (
     get_file_name_only,
     linux_open_folder,
     list_to_excel,
+    macos_open_folder,
     windows_open_folder,
 )
 
 if sys.platform == "win32":
     open_folder = windows_open_folder
+elif sys.platform == "darwin":
+    open_folder = macos_open_folder
 else:
     open_folder = linux_open_folder
 

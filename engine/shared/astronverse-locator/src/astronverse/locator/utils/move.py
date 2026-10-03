@@ -1,9 +1,9 @@
 import math
 import random
+import sys
 import time
 
 import pyautogui
-import uiautomation as auto
 
 pyautogui.FAILSAFE = False
 
@@ -18,12 +18,12 @@ def generate_smooth_path(start_x, start_y, end_x, end_y, duration=1.0):
     dist = math.hypot(dx, dy)
 
     ctrl1 = (
-        start_x + dx * 0.3 + random.uniform(-dist * 0.1, dist * 0.1),
-        start_y + dy * 0.3 + random.uniform(-dist * 0.1, dist * 0.1),
+        start_x + dx * 0.3 + random.uniform(-dist * 0.1, dist * 0.1),  # noqa: S311
+        start_y + dy * 0.3 + random.uniform(-dist * 0.1, dist * 0.1),  # noqa: S311
     )
     ctrl2 = (
-        start_x + dx * 0.7 + random.uniform(-dist * 0.1, dist * 0.1),
-        start_y + dy * 0.7 + random.uniform(-dist * 0.1, dist * 0.1),
+        start_x + dx * 0.7 + random.uniform(-dist * 0.1, dist * 0.1),  # noqa: S311
+        start_y + dy * 0.7 + random.uniform(-dist * 0.1, dist * 0.1),  # noqa: S311
     )
 
     path = []
@@ -37,10 +37,13 @@ def generate_smooth_path(start_x, start_y, end_x, end_y, duration=1.0):
 
 def smooth_move(end_x, end_y, duration=0.4):
     # 解决鼠标在副屏的问题
-    p_x, p_y = auto.GetCursorPos()
-    sc_w, sc_h = pyautogui.size()
-    if p_x > sc_w or p_y > sc_h:
-        pyautogui.moveTo(sc_w // 2, sc_h // 2)
+    if sys.platform == "win32":
+        import uiautomation as auto
+
+        p_x, p_y = auto.GetCursorPos()
+        sc_w, sc_h = pyautogui.size()
+        if p_x > sc_w or p_y > sc_h:
+            pyautogui.moveTo(sc_w // 2, sc_h // 2)
 
     start_x, start_y = pyautogui.position()
     path = generate_smooth_path(start_x, start_y, end_x, end_y, duration)
@@ -73,7 +76,7 @@ def smooth_move(end_x, end_y, duration=0.4):
                 time.sleep(sleep_time)
 
             # 添加微小随机扰动（幅度更小）
-            x += random.randint(-1, 1)
-            y += random.randint(-1, 1)
+            x += random.randint(-1, 1)  # noqa: S311
+            y += random.randint(-1, 1)  # noqa: S311
         # 移动鼠标
         pyautogui.moveTo(x, y)

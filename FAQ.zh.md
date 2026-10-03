@@ -15,12 +15,16 @@
 
 ## 🔧 安装与部署
 
-### Q: 开源版本客户端是否能在 Linux 上运行？
+### Q: 开源版本客户端是否能在 Linux 或 macOS 上运行？
 
-**A:** ❌ **暂时不行！** 开源版本的 Astron RPA 客户端目前仅支持 Windows 系统。
+**A:** Linux 客户端暂未提供。macOS 为实验性支持：在 Mac 上用 `./build.sh` 打包，并授予辅助功能 / 屏幕录制 / 输入监控权限。录屏需要 `ffmpeg`（`brew install ffmpeg`，或把 `ffmpeg` 二进制放到 `resources/` 后再打包）。
 
 **支持的系统：**
-- ✅ Windows 10/11
+- ✅ Windows 10/11（主要支持）
+- 🧪 macOS 13+（实验性，Apple Silicon 与 Intel）
+- ❌ Linux 客户端（暂缓）
+
+仅 Windows 具备的能力（macOS 无等价实现）：IE、SAP COM、金蝶/用友 COM、VK.exe 驱动级键盘、Access ODBC、360 浏览器、Excel.app/Word.app 实时 COM（macOS 使用 openpyxl / python-docx 文件模式）。公证（notarize）需要 Apple 开发者证书，未签名实验包不包含公证。
 
 ### Q: 🆕 服务端 atlas 容器启动后自动退出正常吗？
 

@@ -9,6 +9,8 @@ dependencies = [
     "psutil",
     "numpy",
     "Pillow",
+    "openpyxl",
+    "pyperclip",
     "pywin32; sys_platform == 'win32'"
 ]
 

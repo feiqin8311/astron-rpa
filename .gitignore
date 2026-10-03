@@ -49,6 +49,8 @@ wheels/
 # =============================================================================
 
 build/
+!frontend/packages/electron-app/build/
+!frontend/packages/electron-app/build/entitlements.mac.plist
 dist/
 out/
 tmp/
@@ -169,6 +171,7 @@ coverage.out
 /docker/data/
 
 resources/*.7z
+resources/*.tar.gz
 resources/*.sha256.txt
 resources/vnc/*
 frontend/pnpm-lock.yaml

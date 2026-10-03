@@ -25,7 +25,7 @@ class RpaRouteServer(IServer):
         self.remote_transport = RemoteTransport(self.svc.config.remote_addr, self.svc.managed_execution.handle)
         remote_port = self.remote_transport.start()
 
-        self.proc = SubPopen(name="rpa_route", cmd=[get_cmd()])
+        self.proc = SubPopen(name="rpa_route", cmd=get_cmd())
         self.proc.set_param("port", self.port)
 
         # The binary routes local modules; verified upstream HTTPS/WSS and

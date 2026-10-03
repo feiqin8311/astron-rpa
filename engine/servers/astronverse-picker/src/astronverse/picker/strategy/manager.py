@@ -1,5 +1,7 @@
 """策略管理器模块"""
 
+import sys
+
 from astronverse.picker import APP, PickerDomain
 from astronverse.picker.strategy.types import StrategyEnv, StrategySvc
 from astronverse.picker.utils.process import get_process_name
@@ -38,7 +40,20 @@ class Strategy:
         strategy_func = None
         error = None
 
-        if strategy_svc.domain == PickerDomain.UIA:
+        if sys.platform == "darwin":
+            if strategy_svc.domain == PickerDomain.AX:
+                from astronverse.picker.strategy.ax_strategy import ax_default_strategy
+
+                strategy_func = ax_default_strategy
+            elif strategy_svc.domain in (PickerDomain.AUTO, PickerDomain.AUTO_DESK, PickerDomain.AUTO_WEB):
+                from astronverse.picker.strategy.auto_strategy_mac import auto_default_strategy_mac
+
+                strategy_func = auto_default_strategy_mac
+            elif strategy_svc.domain == PickerDomain.WEB:
+                from astronverse.picker.strategy.web_strategy import web_default_strategy
+
+                strategy_func = web_default_strategy
+        elif strategy_svc.domain == PickerDomain.UIA:
             from astronverse.picker.strategy.uia_strategy import uia_default_strategy
 
             strategy_func = uia_default_strategy
@@ -67,6 +82,8 @@ class Strategy:
             try:
                 if strategy_svc.domain == PickerDomain.WEB:
                     result = strategy_func(self.service_context, strategy_svc)  # 只传 2 个参数
+                elif strategy_svc.domain == PickerDomain.UIA:
+                    result = strategy_func(strategy_svc)
                 else:
                     result = strategy_func(self.service_context, self, strategy_svc)
                 if result is not None:

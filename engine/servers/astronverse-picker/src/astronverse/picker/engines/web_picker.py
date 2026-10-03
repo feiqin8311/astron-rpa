@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 import requests as requests
@@ -18,10 +19,20 @@ class WEBElement(IElement):
     def rect(self) -> Rect:
         if self.__rect is None:
             rect = self.web_info["rect"]
-            left = rect["x"] + self.left_top_point.x
-            top = rect["y"] + self.left_top_point.y
-            right = rect["right"] + self.left_top_point.x
-            bottom = rect["bottom"] + self.left_top_point.y
+            x, y, right, bottom = rect["x"], rect["y"], rect["right"], rect["bottom"]
+            if sys.platform == "darwin":
+                # CSS px -> points: 100% zoom 时相等。只按 page zoom 换算，永不除以 devicePixelRatio。
+                zoom = self.web_info.get("zoom") or self.web_info.get("pageZoom") or 1
+                try:
+                    zoom = float(zoom)
+                except (TypeError, ValueError):
+                    zoom = 1.0
+                if zoom and zoom != 1.0:
+                    x, y, right, bottom = x / zoom, y / zoom, right / zoom, bottom / zoom
+            left = x + self.left_top_point.x
+            top = y + self.left_top_point.y
+            right = right + self.left_top_point.x
+            bottom = bottom + self.left_top_point.y
             self.__rect = Rect(left, top, right, bottom)
         return self.__rect
 

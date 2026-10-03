@@ -75,6 +75,7 @@ class ServiceContext:
         from astronverse.picker.core.highlight_client import highlight_client
 
         self.highlight_client = highlight_client
+        self.highlight_client.set_port(self.highlight_socket_port)
 
         # 策略
         from astronverse.picker.strategy.manager import Strategy
@@ -85,6 +86,12 @@ class ServiceContext:
         if sys.platform == "win32":
             from astronverse.picker.core.event_core_win import EventCore
             from astronverse.picker.core.picker_core_win import PickerCore
+
+            self.event_core: IEventCore = EventCore()
+            self.picker_core: IPickerCore = PickerCore()
+        elif sys.platform == "darwin":
+            from astronverse.picker.core.event_core_mac import EventCore
+            from astronverse.picker.core.picker_core_mac import PickerCore
 
             self.event_core: IEventCore = EventCore()
             self.picker_core: IPickerCore = PickerCore()
@@ -128,4 +135,8 @@ class ServiceContext:
             raise RpaBaseException(TIMEOUT, "拾取超时")
 
         # 返回值
-        return self.__sign__[result_sign]
+        result = self.__sign__[result_sign]
+        event_error = getattr(self.event_core, "error_message", "")
+        if result == "cancel" and event_error:
+            return event_error
+        return result

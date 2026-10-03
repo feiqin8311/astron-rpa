@@ -1,0 +1,1 @@
+# macOS picker overlay helpers

@@ -79,6 +79,30 @@ def check_port(port, host="127.0.0.1"):
     return True
 
 
+def _is_astron_proc(proc: psutil.Process) -> bool:
+    """macOS/Linux: venv python is a symlink, so exe() may not contain astron-rpa."""
+    try:
+        exe = proc.exe() or ""
+        if "astron-rpa" in exe:
+            return True
+    except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
+        pass
+
+    try:
+        cmdline = proc.cmdline() or []
+    except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
+        return False
+
+    if cmdline and "astron-rpa" in cmdline[0]:
+        return True
+    for i, arg in enumerate(cmdline):
+        if arg == "-m" and i + 1 < len(cmdline) and cmdline[i + 1].startswith("astronverse."):
+            return True
+        if "/astronverse/" in arg and arg.endswith(".py"):
+            return True
+    return False
+
+
 def kill_proc_tree(proc: psutil.Process = None, including_parent: bool = True, exclude_pids: list = None):
     """
     递归地杀死指定PID的进程及其所有子进程。
@@ -98,8 +122,11 @@ def kill_proc_tree(proc: psutil.Process = None, including_parent: bool = True, e
                     return
 
             # 只会杀掉启动当期运行目录下的进程
-            proc_cwd = proc.exe()
-            if "astron-rpa" not in proc_cwd:
+            if sys.platform == "win32":
+                proc_cwd = proc.exe()
+                if "astron-rpa" not in proc_cwd:
+                    return
+            elif not _is_astron_proc(proc):
                 return
 
             # 尝试杀死父进程

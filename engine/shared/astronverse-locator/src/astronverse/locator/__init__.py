@@ -128,6 +128,7 @@ class PickerDomain(Enum):
     SAP = "SAP"
     MSAA = "msaa"
     AUTO = "auto"  # 拾取的时候 无他
+    AX = "ax"
 
 
 class PickerType(Enum):

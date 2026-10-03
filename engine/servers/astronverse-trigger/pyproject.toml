@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn",
     "watchfiles",
     "requests",
+    "pynput; sys_platform == 'darwin'",
 ]
 
 [tool.uv.sources]

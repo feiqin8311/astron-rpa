@@ -1,9 +1,9 @@
 import os
+import subprocess
+import sys
 
 
 def linux_open_folder(folder_path: str = ""):
-    import subprocess
-
     subprocess.Popen(
         ["xdg-open", folder_path],
         stdin=subprocess.DEVNULL,
@@ -16,6 +16,28 @@ def linux_open_folder(folder_path: str = ""):
 
 def windows_open_folder(folder_path: str = ""):
     return os.startfile(folder_path)
+
+
+def macos_open_folder(folder_path: str = ""):
+    subprocess.Popen(
+        ["open", folder_path],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+
+
+def macos_reveal(path: str = ""):
+    subprocess.Popen(
+        ["open", "-R", path],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
 
 
 def get_file_name_only(file_path: str = "") -> str:
@@ -75,6 +97,8 @@ def list_to_excel(path_list: list = None, excel_path: str = ""):
 
 
 def get_exe_path():
+    if sys.platform != "win32":
+        raise NotImplementedError("VK.exe 仅支持 Windows")
     atoms_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     driver_path = os.path.join(
         atoms_dir, "astronverse.input", "src", "astronverse.input", "VK", "bin", "debug", "VK.exe"

@@ -6,7 +6,7 @@ def platform_python_path(dir: str):
     if sys.platform == "win32":
         path = os.path.join(dir, r"python.exe")
     else:
-        path = os.path.join(dir, "bin", "python3.7")
+        path = os.path.join(dir, "bin", "python3")
     return path
 
 
@@ -22,7 +22,7 @@ def platform_python_venv_path(v_path: str):
     if sys.platform == "win32":
         path = os.path.join(v_path, "venv", "Scripts", "python.exe")
     else:
-        path = os.path.join(v_path, "venv", "bin", "python3.7")
+        path = os.path.join(v_path, "venv", "bin", "python3")
     return path
 
 

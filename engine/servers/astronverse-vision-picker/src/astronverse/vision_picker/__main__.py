@@ -88,7 +88,10 @@ async def handler(websocket):
                     data = json.loads(input_data.data)
                     # 首先进行目标元素校验，判断当前界面是否存在目标元素
                     match_rect = IPickCore.match_imgs(data=data, remote_addr=Config.REMOTE_ADDR)
-                    desktop_img = pyautogui.screenshot()
+                    if sys.platform == "darwin":
+                        desktop_img = IPickCore.screenshot()
+                    else:
+                        desktop_img = pyautogui.screenshot()
                     if match_rect:
                         # 向高亮发送designate信号及目标元素坐标，进行标识
                         hl.send_rect(operation="start", status="designate", rect=match_rect)

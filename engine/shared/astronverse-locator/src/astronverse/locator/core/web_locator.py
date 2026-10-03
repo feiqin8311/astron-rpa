@@ -1,17 +1,52 @@
+import sys
+from collections import deque
 from typing import Any, Optional, Union
 
 import requests
-import uiautomation as auto
 from astronverse.baseline.logger.logger import logger
 from astronverse.locator import (
+    BROWSER_UIA_POINT_CLASS,
+    BROWSER_UIA_WINDOW_CLASS,
     LIKE_CHROME_BROWSER_TYPES,
     BrowserType,
     ILocator,
     Rect,
-    BROWSER_UIA_POINT_CLASS,
-    BROWSER_UIA_WINDOW_CLASS,
 )
 from astronverse.locator.utils.window import top_browser
+
+if sys.platform == "win32":
+    import uiautomation as auto
+
+
+def _bfs_ax_webarea(win: Any, ax_common: Any, max_depth: int = 12) -> Optional[Rect]:
+    queue: deque[tuple[Any, int]] = deque([(win, 0)])
+    while queue:
+        el, depth = queue.popleft()
+        if ax_common.ax_attr(el, "AXRole") == "AXWebArea":
+            rect = ax_common.ax_rect(el)
+            if rect is not None and rect.width() > 0 and rect.height() > 0:
+                return rect
+        if depth >= max_depth:
+            continue
+        for child in ax_common.ax_children(el):
+            queue.append((child, depth + 1))
+    return None
+
+
+def _ax_webarea_origin(pid: int) -> Optional[tuple[int, int]]:
+    if not pid:
+        return None
+    from astronverse.locator.core import ax_common
+
+    app_el = ax_common.app_element(pid)
+    for win in ax_common.app_windows(app_el):
+        if ax_common.ax_attr(win, "AXMinimized"):
+            continue
+        ax_common.raise_window(win, pid)
+        rect = _bfs_ax_webarea(win, ax_common)
+        if rect is not None:
+            return rect.top, rect.left
+    return None
 
 
 class WEBLocator(ILocator):
@@ -115,6 +150,55 @@ class WebFactory:
     @classmethod
     def __get_web_top__(cls, element: dict, app: str) -> tuple[int, int]:
         """浏览器右上角位置"""
+        if sys.platform == "darwin":
+            ctrl = top_browser(app_name=app)
+            if ctrl is None:
+                raise Exception(f"未找到{app}浏览器窗口，请确认浏览器是否已启动")
+
+            origin = _ax_webarea_origin(getattr(ctrl, "ProcessId", 0))
+            if origin is not None:
+                return origin
+
+            logger.warning("未找到浏览器 AXWebArea，回退到窗口顶部 + 工具栏高度估算")
+
+            b_rect = ctrl.BoundingRectangle
+            window_top = b_rect.top
+            window_left = b_rect.left
+            window_height = b_rect.height()
+
+            # The web element rect from the extension is relative to the viewport.
+            # On macOS, compute viewport top = window_top + (window_height - viewport_height)
+            # when the extension provides window.innerHeight/outerHeight data.
+            # If not available, use sensible fixed offset per browser.
+            viewport_height = element.get("innerHeight") or element.get("viewport_height")
+            outer_height = element.get("outerHeight") or element.get("window_height")
+            if viewport_height and outer_height:
+                toolbar_height = int(outer_height) - int(viewport_height)
+            elif viewport_height and window_height:
+                toolbar_height = int(window_height) - int(viewport_height)
+            else:
+                # TODO: Extension checkElement does not currently return window.innerHeight/outerHeight.
+                # When browser extension is updated to supply viewport dimension metadata,
+                # toolbar_height can be computed dynamically as (window_height - viewport_height).
+                # Default toolbar heights on macOS:
+                # Chrome: ~85px (tab bar + address bar)
+                # Edge: ~85px
+                # Firefox: ~85px
+                # Chromium: ~85px
+                browser_toolbar_heights = {
+                    BrowserType.CHROME.value: 85,
+                    BrowserType.EDGE.value: 85,
+                    BrowserType.FIREFOX.value: 85,
+                    BrowserType.CHROMIUM.value: 85,
+                    BrowserType.CHROME_360_SE.value: 85,
+                    BrowserType.CHROME_360_X.value: 85,
+                }
+                toolbar_height = browser_toolbar_heights.get(app, 85)
+
+            viewport_top = window_top + toolbar_height
+            viewport_left = window_left
+            return viewport_top, viewport_left
+
         app_name = app
         cfg = BROWSER_UIA_WINDOW_CLASS.get(app_name)
         if not cfg:

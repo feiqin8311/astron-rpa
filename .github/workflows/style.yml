@@ -55,6 +55,70 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project engine/servers/astronverse-scheduler --dev --no-sync pytest engine/servers/astronverse-scheduler/tests
 
+  python-macos:
+    name: Python macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            engine/**
+            .github/workflows/style.yml
+
+      - name: Setup UV and Python
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: "3.13"
+          cache-dependency-glob: engine/uv.lock
+
+      - name: Install dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv sync --project engine --dev --frozen
+
+      - name: Import engine entry points
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: >
+          uv run --project engine --no-sync python -c
+          "import astronverse.scheduler.start, astronverse.scheduler.core.route.local_router,
+          astronverse.trigger.server, astronverse.picker.start, astronverse.vision_picker.core.picker,
+          astronverse.browser.browser_software, astronverse.browser.browser_element,
+          astronverse.system.system, astronverse.excel.excel, astronverse.word.docx,
+          astronverse.window.window, astronverse.input.gui_mouse, astronverse.winelement.winele"
+
+      - name: Run macOS tests
+        if: steps.changed-files.outputs.any_changed == 'true'
+        # Test files share basenames across packages, so use importlib mode.
+        run: >
+          uv run --project engine --no-sync --with pytest --with pytest-asyncio
+          pytest --import-mode=importlib -q
+          engine/servers/astronverse-scheduler/tests/test_local_router.py
+          engine/servers/astronverse-scheduler/tests/test_macos_startup.py
+          engine/servers/astronverse-trigger/tests
+          engine/servers/astronverse-picker/tests
+          engine/servers/astronverse-vision-picker/tests/test_macos.py
+          engine/servers/astronverse-executor/tests/test_recording_macos.py
+          engine/shared/astronverse-locator/tests
+          engine/shared/astronverse-browser-plugin/tests/test_mac_plugin.py
+          engine/components/astronverse-system/tests/test_macos.py
+          engine/components/astronverse-software/tests/test_macos.py
+          engine/components/astronverse-pdf/tests/test_macos.py
+          engine/components/astronverse-browser/tests/test_macos.py
+          engine/components/astronverse-excel/tests
+          engine/components/astronverse-word/tests/test_core_docx.py
+          engine/components/astronverse-window/tests/test_core_mac.py
+          engine/components/astronverse-input/tests/test_macgui.py
+          engine/components/astronverse-winelement/tests/test_winele_mac.py
+
   java-style:
     name: Java Style
     runs-on: ubuntu-latest

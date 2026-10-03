@@ -1,4 +1,3 @@
-import platform
 import sys
 
 from astronverse.actionlib.atomic import atomicMg
@@ -8,10 +7,8 @@ from astronverse.database.error import *
 
 if sys.platform == "win32":
     from astronverse.database.core_win import DatabaseCore
-elif platform.system() == "Linux":
-    from astronverse.database.core_unix import DatabaseCore
 else:
-    raise NotImplementedError("Your platform (%s) is not supported by (%s)." % (platform.system(), "clipboard"))
+    from astronverse.database.core_unix import DatabaseCore
 
 
 DatabaseCore: IDatabaseCore = DatabaseCore()

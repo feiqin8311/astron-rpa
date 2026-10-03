@@ -22,8 +22,7 @@ class ExcelObj:
     def get_name(self):
         if sys.platform == "win32":
             return self.obj.Name
-        else:
-            return ""
+        return getattr(self.obj, "name", "") or ""
 
     @typesMg.shortcut("ExcelObj", res_type="Str")
     def get_full_name(self) -> str:
@@ -37,7 +36,8 @@ class ExcelObj:
             from astronverse.excel.core_win.range import Range
             from astronverse.excel.core_win.worksheet import Worksheet
         else:
-            return 0
+            from astronverse.excel.core_openpyxl.range import Range
+            from astronverse.excel.core_openpyxl.worksheet import Worksheet
         worksheet = Worksheet.get_worksheet(self, "", default=1)
         used_range = Worksheet.get_worksheet_used_range(worksheet)
         r_start_row, r_start_col, r_end_row, r_end_col, r_address = used_range

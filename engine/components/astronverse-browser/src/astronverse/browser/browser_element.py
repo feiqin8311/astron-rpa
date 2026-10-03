@@ -1,5 +1,6 @@
 import base64
 import os
+import sys
 import time
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
@@ -14,7 +15,11 @@ from astronverse.browser.utils.table_filter import (
     table_df_to_out,
     table_json_merge_values,
 )
-from astronverse.browser.core.core_win import BrowserCore
+
+if sys.platform == "darwin":
+    from astronverse.browser.core.core_mac import BrowserCore
+else:
+    from astronverse.browser.core.core_win import BrowserCore
 from astronverse.locator import smooth_move
 from astronverse.locator.locator import locator
 
@@ -363,7 +368,8 @@ class BrowserElement:
 
             # 清空输入
             if input_type == FillInputForInputTypeFlag.Overwrite:
-                Keyboard.hotkey("ctrl", "a")
+                mod = "command" if sys.platform == "darwin" else "ctrl"
+                Keyboard.hotkey(mod, "a")
                 time.sleep(0.5)
                 Keyboard.press("delete")
                 time.sleep(0.5)
@@ -381,7 +387,8 @@ class BrowserElement:
                 from astronverse.input.code.clipboard import Clipboard
 
                 Clipboard.copy(data=text)
-                Keyboard.hotkey("ctrl", "v")
+                mod = "command" if sys.platform == "darwin" else "ctrl"
+                Keyboard.hotkey(mod, "v")
 
         return text
 

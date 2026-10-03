@@ -32,7 +32,7 @@ AstronRPA is an enterprise-grade Robotic Process Automation (RPA) desktop applic
 
 ### 🎯 Why Choose AstronRPA?
 
-- **🛠️ Comprehensive Automation Support**: Comprehensive coverage of Windows desktop applications and web page automation. Supports common office software like WPS and Office, financial and ERP systems like Kingdee and YonYou, and various browsers like IE, Edge, and Chrome, enabling end-to-end cross-application automation.
+- **🛠️ Comprehensive Automation Support**: Comprehensive coverage of Windows desktop applications, experimental macOS Accessibility automation, and web page automation. Supports common office software like WPS and Office, financial and ERP systems like Kingdee and YonYou on Windows, and browsers like Chrome, Edge, and Firefox (IE is Windows-only), enabling end-to-end cross-application automation.
 - **🧩 Highly Component-based**: 300+ pre-built atomic capabilities covering UI operations, data processing, and system interactions. Supports visual orchestration and custom component extensions with high flexibility and maintainability.
 - **🏭 Enterprise-grade Security & Collaboration**: Built-in excellence center and team marketplace with enterprise modules. Provides terminal monitoring, scheduling modes, robot team sharing and collaborative functions. Build a complete enterprise automation management ecosystem with process security, permission control, and cross-team collaboration.
 - **👨‍💻 Developer-friendly Experience**: Low-code, visual process design and debugging environment. Quickly build automation workflows through intuitive drag-and-drop methods, reducing development barriers, improving development efficiency, and enabling business users to participate in automation creation.
@@ -42,7 +42,7 @@ AstronRPA is an enterprise-grade Robotic Process Automation (RPA) desktop applic
 ## 🚀 Quick Start
 
 ### System Requirements
-- 💻 **Client Operating System**: Windows 10/11 (primary support)
+- 💻 **Client Operating System**: Windows 10/11 (primary). macOS client is experimental (see BUILD_GUIDE). Linux client is not available yet.
 - 🧠 **RAM** >= 8 GiB
 
 ### **Server**: Deploy with Docker

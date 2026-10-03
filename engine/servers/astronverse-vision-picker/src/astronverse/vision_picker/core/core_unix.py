@@ -29,7 +29,7 @@ class RectHandler(IRectHandler):
 
             rect = (geometry["X"], geometry["Y"], geometry["WIDTH"], geometry["HEIGHT"])
 
-            return window_id.decode("utf-8"), window_name, rect
+            return window_id, window_name, rect
         except subprocess.CalledProcessError:
             return None, None, None
 

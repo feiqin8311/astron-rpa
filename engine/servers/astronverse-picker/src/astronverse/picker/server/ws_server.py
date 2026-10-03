@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import time
 import uuid
 from enum import Enum
@@ -8,7 +9,6 @@ from typing import Any, Optional
 import websockets
 from astronverse.picker import OperationResult, PickerSign, PickerType, RecordAction, SmartComponentAction, SVCSign
 from astronverse.picker.logger import logger
-from astronverse.picker.utils.browser import Browser
 from pydantic import BaseModel
 
 
@@ -281,6 +281,8 @@ class PickerRequestHandler:
                 else input_data.data
             )
 
+            from astronverse.picker.utils.browser import Browser
+
             Browser.send_browser_extension(
                 browser_type=data.get("app"),
                 data=data.get("path"),
@@ -308,6 +310,8 @@ class PickerRequestHandler:
                 if isinstance(input_data.data, str)
                 else input_data.data
             )
+
+            from astronverse.picker.utils.browser import Browser
 
             web_info = Browser.send_browser_extension(
                 browser_type=data.get("app"),
@@ -409,6 +413,8 @@ class WsServer:
 
     def _setup_record_callbacks(self):
         """设置录制事件回调"""
+        if sys.platform == "darwin":
+            return
         from astronverse.picker.core.recorder_core_win import record_manager
 
         record_manager.set_push_callbacks(
@@ -475,9 +481,10 @@ class WsServer:
 
     def server(self) -> None:
         """启动WebSocket服务器"""
-        import pythoncom
+        if sys.platform == "win32":
+            import pythoncom
 
-        pythoncom.CoInitialize()
+            pythoncom.CoInitialize()
 
         async def start_server():
             """异步启动WebSocket服务器"""

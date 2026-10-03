@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
@@ -150,6 +152,12 @@ class System:
         ],
     )
     def screen_lock():
+        if sys.platform == "darwin":
+            try:
+                subprocess.run(["pmset", "displaysleepnow"], check=True)
+                return True
+            except Exception as e:
+                raise BaseException(SCREENLOCK_ERROR_FORMAT.format(e), "{e}")
         raise NotImplementedError()
 
     @staticmethod
@@ -187,6 +195,8 @@ class System:
         password_text: str = "",
         password_rsa: str = "",
     ):
+        if sys.platform == "darwin":
+            raise NotImplementedError("macOS 不支持自动解锁屏幕")
         raise NotImplementedError()
 
     @staticmethod

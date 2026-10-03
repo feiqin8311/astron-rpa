@@ -10,6 +10,8 @@ from astronverse.system.utils import folder_is_exists
 
 if sys.platform == "win32":
     from astronverse.system.core.clipboard_core_win import ClipBoardCore
+elif sys.platform == "darwin":
+    from astronverse.system.core.clipboard_core_mac import ClipBoardCore
 else:
     from astronverse.system.core.clipboard_core_linux import ClipBoardCore
 

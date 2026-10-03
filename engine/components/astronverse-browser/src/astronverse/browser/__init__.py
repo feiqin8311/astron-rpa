@@ -40,6 +40,26 @@ BROWSER_REGISTER_NAME = {
     CommonForBrowserType.BTFirefox.value: "firefox.exe",
 }
 
+# macOS 应用程序名称
+BROWSER_MAC_APP_NAME = {
+    CommonForBrowserType.BTChrome.value: "Google Chrome",
+    CommonForBrowserType.BTEdge.value: "Microsoft Edge",
+    CommonForBrowserType.BTFirefox.value: "Firefox",
+    CommonForBrowserType.BTChromium.value: "Chromium",
+    CommonForBrowserType.BT360SE.value: "",
+    CommonForBrowserType.BT360X.value: "",
+}
+
+# macOS Bundle Identifier
+BROWSER_MAC_BUNDLE_ID = {
+    CommonForBrowserType.BTChrome.value: "com.google.Chrome",
+    CommonForBrowserType.BTEdge.value: "com.microsoft.edgemac",
+    CommonForBrowserType.BTFirefox.value: "org.mozilla.firefox",
+    CommonForBrowserType.BTChromium.value: "org.chromium.Chromium",
+    CommonForBrowserType.BT360SE.value: "",
+    CommonForBrowserType.BT360X.value: "",
+}
+
 # 隐身模式
 BROWSER_PRIVATE_MAP = {
     CommonForBrowserType.BTChrome.value: "incognito",

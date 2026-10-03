@@ -14,13 +14,60 @@ import subprocess
 import sys
 import time
 
-import win32com
-import win32com.client as wc
-import win32print
-import win32ui
 from astronverse.baseline.logger.logger import logger
 from astronverse.system import BatchType, DocAppType, FileType, XlsAppType
-from PIL import Image, ImageWin
+from PIL import Image
+
+if sys.platform == "win32":
+    import win32com
+    import win32com.client as wc
+    import win32print
+    import win32ui
+    from PIL import ImageWin
+
+_OFFICE_EXTS = {".doc", ".docx", ".xls", ".xlsx", ".wps", ".et"}
+
+
+def parse_lpstat_printers(output: str) -> list:
+    """解析 `lpstat -p` / `lpstat -p -d` 输出中的打印机名称。"""
+    names = []
+    for line in (output or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("printer "):
+            parts = stripped.split()
+            if len(parts) >= 2 and parts[1]:
+                names.append(parts[1])
+    return names
+
+
+def parse_lpstat_status(output: str) -> int:
+    """CUPS 打印机状态：0 空闲，非 0 忙碌/打印中。"""
+    lower = (output or "").lower()
+    if "now printing" in lower:
+        return 1
+    if "is idle" in lower:
+        return 0
+    if "disabled" in lower:
+        return 2
+    return 0
+
+
+def parse_lpstat_jobs_idle(output: str) -> bool:
+    """True 表示队列为空（与 Windows jobs_printer 的 True=无任务一致）。"""
+    return not (output or "").strip()
+
+
+def parse_lpstat_default(output: str) -> str:
+    """解析 `lpstat -d` 输出中的默认打印机名称。"""
+    for line in (output or "").splitlines():
+        stripped = line.strip()
+        lower = stripped.lower()
+        if "no system default destination" in lower:
+            return ""
+        prefix = "system default destination:"
+        if lower.startswith(prefix):
+            return stripped.split(":", 1)[1].strip()
+    return ""
 
 
 class PrinterCore:
@@ -80,6 +127,8 @@ class PrinterCore:
 
     @staticmethod
     def _create_app(params: str):
+        if sys.platform != "win32":
+            raise NotImplementedError("Word/Excel COM 打印仅支持 Windows")
         try:
             app_obj = win32com.client.gencache.EnsureDispatch(params)  # type: ignore
             return app_obj
@@ -92,6 +141,8 @@ class PrinterCore:
 
     def init_word_app(self, default_application: DocAppType = DocAppType.WORD):
         """初始化 word app"""
+        if sys.platform != "win32":
+            raise NotImplementedError("Word COM 打印仅支持 Windows")
         keys = [
             "Word.Application",
             "Kwps.Application",
@@ -122,6 +173,8 @@ class PrinterCore:
 
     def init_excel_app(self, default_application: XlsAppType = XlsAppType.EXCEL):
         """初始化 excel app"""
+        if sys.platform != "win32":
+            raise NotImplementedError("Excel COM 打印仅支持 Windows")
         keys = [
             "Excel.Application",
             "Ket.Application",
@@ -175,7 +228,10 @@ class PrinterCore:
         logger.info(f"选择的文件类型：{file_type}，打印的文件: {print_file}")
 
         if printer_name in ["默认打印机", ""]:
-            _default_printer_name = win32print.GetDefaultPrinter()
+            if sys.platform == "darwin":
+                _default_printer_name = PrinterCore._darwin_default_printer()
+            else:
+                _default_printer_name = win32print.GetDefaultPrinter()
             logger.info(f"获取到的默认打印机名称为：{_default_printer_name}")
         else:
             all_printers = PrinterCore.view_printer()
@@ -260,6 +316,65 @@ class PrinterCore:
             raise ValueError("不支持打印的文件类型，请检查文件信息")
         return task
 
+    @staticmethod
+    def _darwin_default_printer() -> str:
+        result = subprocess.run(
+            ["lpstat", "-d"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        name = parse_lpstat_default(result.stdout or "")
+        if not name:
+            raise ValueError("未发现默认打印机，请检查打印机信息")
+        return name
+
+    @staticmethod
+    def _office_to_pdf(file_path: str) -> str:
+        import shutil
+        import tempfile
+
+        soffice = shutil.which("soffice") or shutil.which("libreoffice")
+        if not soffice:
+            raise FileNotFoundError(
+                "macOS 打印 Office 文档需要 LibreOffice（soffice --headless --convert-to pdf），未找到 soffice"
+            )
+        out_dir = tempfile.mkdtemp(prefix="astronverse-print-")
+        proc = subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf", "--outdir", out_dir, file_path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if proc.returncode != 0:
+            raise RuntimeError("LibreOffice 转换 PDF 失败: {}".format(proc.stderr or proc.stdout))
+        pdf_name = os.path.splitext(os.path.basename(file_path))[0] + ".pdf"
+        pdf_path = os.path.join(out_dir, pdf_name)
+        if not os.path.isfile(pdf_path):
+            raise RuntimeError("LibreOffice 未生成 PDF: {}".format(pdf_path))
+        return pdf_path
+
+    @staticmethod
+    def _print_darwin(printer_name: str, file_path: str, **kwargs) -> bool:
+        ext = os.path.splitext(file_path)[1].lower()
+        print_path = file_path
+        if ext in _OFFICE_EXTS:
+            print_path = PrinterCore._office_to_pdf(file_path)
+        copies = kwargs.get("print_num", 1) or 1
+        cmd = ["lp", "-d", printer_name, "-n", str(int(copies))]
+        paper_size = kwargs.get("paper_size")
+        if paper_size and paper_size not in ("", "custom", "CUSTOM"):
+            cmd.extend(["-o", "media={}".format(paper_size)])
+        if kwargs.get("orientation_type") == "horizontal":
+            cmd.extend(["-o", "landscape"])
+        cmd.append(print_path)
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if proc.returncode != 0:
+            raise RuntimeError("CUPS 打印失败: {}".format(proc.stderr or proc.stdout))
+        return True
+
     def print_word(self, printer_name: str, file_path: str, printer_type: str, **kwargs):
         """
         打印 Word 文档。
@@ -274,6 +389,8 @@ class PrinterCore:
         Returns:
             bool: 打印是否成功。
         """
+        if sys.platform == "darwin":
+            return PrinterCore._print_darwin(printer_name, file_path, **kwargs)
         defaults = {
             "paper_size": "A4",
             "print_num": 1,
@@ -375,6 +492,8 @@ class PrinterCore:
         Returns:
             bool: 打印是否成功。
         """
+        if sys.platform == "darwin":
+            return PrinterCore._print_darwin(printer_name, file_path, **kwargs)
         defaults = {
             "paper_size": "A4",
             "print_num": 1,
@@ -494,6 +613,8 @@ class PrinterCore:
         Returns:
             bool: 打印是否成功。
         """
+        if sys.platform == "darwin":
+            return PrinterCore._print_darwin(printer_name, file_path, **kwargs)
         defaults = {
             "paper_size": "A4",
             "print_num": 1,
@@ -591,6 +712,8 @@ class PrinterCore:
         Returns:
             bool: 打印是否成功。
         """
+        if sys.platform == "darwin":
+            return PrinterCore._print_darwin(printer_name, file_path, **kwargs)
         defaults = {
             "paper_size": "A4",
             "print_num": 1,
@@ -682,6 +805,15 @@ class PrinterCore:
         Returns:
             list: 打印机名称列表。
         """
+        if sys.platform == "darwin":
+            result = subprocess.run(
+                ["lpstat", "-p", "-d"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            return parse_lpstat_printers(result.stdout or "")
         printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
         printer_names = [printers[2] for printers in printers if printers[2]]
         return printer_names
@@ -694,6 +826,16 @@ class PrinterCore:
         Returns:
             int: 打印机状态码。
         """
+        if sys.platform == "darwin":
+            printer_name = PrinterCore._darwin_default_printer()
+            result = subprocess.run(
+                ["lpstat", "-p", printer_name],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            return parse_lpstat_status(result.stdout or "")
         printer_name = win32print.GetDefaultPrinter()
         printer_handle = win32print.OpenPrinter(printer_name)
         status = win32print.GetPrinter(printer_handle, 2)
@@ -708,6 +850,20 @@ class PrinterCore:
         Returns:
             bool|None: True-无任务，False-有任务，None-异常。
         """
+        if sys.platform == "darwin":
+            try:
+                printer_name = PrinterCore._darwin_default_printer()
+                result = subprocess.run(
+                    ["lpstat", "-o", printer_name],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                return parse_lpstat_jobs_idle(result.stdout or "")
+            except Exception as e:
+                print(f"发生错误: {e}")
+                return None
         try:
             # 获取默认打印机的名称
             printer_name = win32print.GetDefaultPrinter()

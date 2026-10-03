@@ -54,6 +54,10 @@ class BrowserPlugin(BaseModel):
 
 class BrowserType(Enum):
     CHROME = "CHROME"
+    MICROSOFT_EDGE = "MICROSOFT_EDGE"
+    FIREFOX = "FIREFOX"
+    BROWSER_360 = "360"
+    BROWSER_360X = "360X"
 
 
 class ContractFactors(Enum):
@@ -171,12 +175,24 @@ def video_play(video_paths: VideoPaths):
         return res_msg(code=ResCode.ERR, msg=str(e), data=None)
 
 
+def _autostart_exe_path(svc: Svc) -> str:
+    if sys.platform == "win32":
+        return os.path.join(os.path.dirname(os.path.dirname(svc.config.conf_file)), "astron-rpa.exe").lower()
+    conf = svc.config.conf_file
+    resources = os.path.dirname(conf)
+    contents = os.path.dirname(resources)
+    exe = os.path.join(contents, "MacOS", "astron-rpa")
+    if os.path.isfile(exe):
+        return exe
+    return sys.executable
+
+
 @router.post("/window/auto_start/check")
 def auto_start_check():
     """
     自启动探测
     """
-    if sys.platform != "win32":
+    if sys.platform.startswith("linux"):
         return res_msg(msg="", data={"autostart": False})
 
     from astronverse.scheduler.utils.window import AutoStart
@@ -189,13 +205,12 @@ def auto_start_enable(svc: Svc = Depends(get_svc)):
     """
     自动开启
     """
-    if sys.platform != "win32":
+    if sys.platform.startswith("linux"):
         return res_msg(msg="", data={"tips": "操作异常，linux暂不支持自启动"})
 
     from astronverse.scheduler.utils.window import AutoStart
 
-    exe_path = os.path.join(os.path.dirname(os.path.dirname(svc.config.conf_file)), "astron-rpa.exe").lower()
-    AutoStart.enable(exe_path)
+    AutoStart.enable(_autostart_exe_path(svc))
     return res_msg(msg="", data={"tips": "操作成功"})
 
 
@@ -204,7 +219,7 @@ def auto_start_disable():
     """
     自启动关闭
     """
-    if sys.platform != "win32":
+    if sys.platform.startswith("linux"):
         return res_msg(msg="", data={"tips": "操作异常，linux暂不支持自启动"})
 
     from astronverse.scheduler.utils.window import AutoStart
@@ -239,11 +254,11 @@ def browser_install(plugin_op: BrowserPlugin):
 
         browser = BrowserType.init(plugin_op.browser)
         ex_manager = ExtensionManager(browser_type=browser)
-        ex_manager.install()
-        return res_msg(msg="安装成功", data=None)
+        res = ex_manager.install()
+        return res_msg(msg="安装成功" if not res else str(res), data=None)
     except Exception as e:
         logger.exception(e)
-    return res_msg(code=ResCode.ERR, msg="安装失败", data=None)
+        return res_msg(code=ResCode.ERR, msg=str(e) or "安装失败", data=None)
 
 
 @router.post("/browser/plugins/check_status")

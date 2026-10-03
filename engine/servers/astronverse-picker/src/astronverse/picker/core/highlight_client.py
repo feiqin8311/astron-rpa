@@ -1,16 +1,37 @@
 import json
 import socket
+import sys
 
 from astronverse.picker import Rect
 from astronverse.picker.logger import logger
 
 
+def _get_default_port() -> int:
+    try:
+        for i, arg in enumerate(sys.argv):
+            if arg == "--highlight_socket_port" and i + 1 < len(sys.argv):
+                return int(sys.argv[i + 1])
+            elif arg.startswith("--highlight_socket_port="):
+                return int(arg.split("=", 1)[1])
+    except Exception:
+        pass
+    return 11001
+
+
 class HighLightClient:
     """使用高亮的门面对象-客户端对象"""
 
-    def __init__(self, port=11001):
+    def __init__(self, port: int | None = None):
+        if port is None:
+            port = _get_default_port()
         self.__socket_port = port
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def set_port(self, port: int):
+        self.__socket_port = int(port)
+
+    def get_port(self) -> int:
+        return self.__socket_port
 
     def __enter__(self):
         return self

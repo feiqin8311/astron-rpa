@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+from astronverse.scheduler.logger import logger
 from astronverse.scheduler.utils.utils import EmitType, emit_to_front
 
 
@@ -24,7 +25,7 @@ def win_env_check(svc):
 
 def linux_env_check():
     """linux环境检测"""
-    if sys.platform == "win32":
+    if not sys.platform.startswith("linux"):
         return
 
     try:
@@ -81,5 +82,42 @@ def linux_env_check():
                     encoding="utf-8",
                     errors="replace",
                 )
-    except subprocess.CalledProcessError as e:
-        pass
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+        logger.warning("linux_env_check error: %s", e)
+
+
+def mac_env_check():
+    """macOS环境检测"""
+    if sys.platform != "darwin":
+        return
+
+    try:
+        import Quartz
+        from ApplicationServices import AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt
+
+        ax_trusted = AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
+        screen_trusted = Quartz.CGPreflightScreenCaptureAccess()
+        if not screen_trusted:
+            Quartz.CGRequestScreenCaptureAccess()
+        listen_trusted = True
+        try:
+            listen_trusted = bool(Quartz.CGPreflightListenEventAccess())
+            if not listen_trusted:
+                Quartz.CGRequestListenEventAccess()
+        except Exception:
+            listen_trusted = True
+
+        if not ax_trusted or not screen_trusted or not listen_trusted:
+            emit_to_front(
+                EmitType.ALERT,
+                msg={
+                    "msg": (
+                        "请在“系统设置 > 隐私与安全性”中为星辰RPA授予"
+                        "辅助功能(Accessibility)、屏幕录制(Screen Recording)"
+                        "和输入监控(Input Monitoring)权限，然后重启应用"
+                    ),
+                    "type": "normal",
+                },
+            )
+    except Exception as e:
+        logger.warning("mac_env_check error: %s", e)

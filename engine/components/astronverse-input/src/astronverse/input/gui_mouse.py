@@ -1,3 +1,5 @@
+import sys
+
 import pyautogui
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
@@ -14,8 +16,22 @@ from astronverse.input import (
 )
 from astronverse.input.code.keyboard import Keyboard
 from astronverse.input.code.mouse import Mouse
-from astronverse.input.code.win32gui import window_find, window_info, window_top
 from astronverse.input.error import *
+
+if sys.platform == "win32":
+    from astronverse.input.code.win32gui import window_find, window_info, window_top
+elif sys.platform == "darwin":
+    from astronverse.input.code.macgui import window_find, window_info, window_top
+else:
+
+    def window_find(pick):
+        raise NotImplementedError("window_find is not supported on this platform")
+
+    def window_info(handler):
+        raise NotImplementedError("window_info is not supported on this platform")
+
+    def window_top(handler):
+        raise NotImplementedError("window_top is not supported on this platform")
 
 
 class GuiMouse:

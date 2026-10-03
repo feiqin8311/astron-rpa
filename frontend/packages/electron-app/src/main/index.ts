@@ -147,6 +147,18 @@ else {
       mainWindow.focus()
     }
   });
+  if (process.platform === 'darwin') {
+    app.setAsDefaultProtocolClient('astronrpa')
+    app.on('open-url', (event, _url) => {
+      event.preventDefault()
+      const mainWindow = getMainWindow()
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.show()
+        mainWindow.focus()
+      }
+    })
+  }
   // 在Electron完成初始化时被触发
   app.whenReady().then(ready).catch((err) => {
     logger.error('app ready error', err.toString())

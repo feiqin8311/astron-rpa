@@ -10,7 +10,11 @@ from astronverse.actionlib.atomic import atomicMg
 from astronverse.actionlib.types import PATH, URL, WebPick
 from astronverse.browser import *
 from astronverse.browser.browser import Browser
-from astronverse.browser.core.core_win import BrowserCore
+
+if sys.platform == "darwin":
+    from astronverse.browser.core.core_mac import BrowserCore
+else:
+    from astronverse.browser.core.core_win import BrowserCore
 from astronverse.browser.error import *
 from astronverse.software.software import Software
 from astronverse.browser.core.launcher import BrowserLauncher
@@ -81,6 +85,11 @@ class BrowserSoftware:
             software_tag = BROWSER_SOFTWARE_TAG.get(browser_type.value, None)
             if not (software_tag and software_tag.lower() in app_exe.lower()):
                 raise BaseException(SELECT_MATCHING_APP_PATH.format(app_exe.lower()), "请选择跟浏览器匹配的应用路径")
+        elif browser_abs_path and sys.platform == "darwin":
+            app_name = os.path.basename(str(browser_abs_path).rstrip("/"))
+            software_tag = BROWSER_MAC_APP_NAME.get(browser_type.value, None)
+            if software_tag and software_tag.lower() not in app_name.lower():
+                raise BaseException(SELECT_MATCHING_APP_PATH.format(app_name.lower()), "请选择跟浏览器匹配的应用路径")
 
         # 检查browser_abs_path的路径
         if not browser_abs_path:
@@ -90,11 +99,26 @@ class BrowserSoftware:
 
         # 内置浏览器加载插件
         if browser_type == CommonForBrowserType.BTChromium:
-            extension_path = (
-                f"{os.getcwd()}/python_core/Lib/site-packages/astronverse/browser_plugin/plugins/chromium-extension"
-            )
-            extension_path = extension_path.replace("/", os.sep)
-            open_args += f" --load-extension='{extension_path}'"
+            if sys.platform == "darwin":
+                try:
+                    import importlib.resources
+
+                    extension_path = str(
+                        importlib.resources.files("astronverse.browser_plugin") / "plugins" / "chromium-extension"
+                    )
+                except Exception:
+                    import astronverse.browser_plugin
+
+                    extension_path = os.path.join(
+                        os.path.dirname(astronverse.browser_plugin.__file__), "plugins", "chromium-extension"
+                    )
+                open_args += f' --load-extension="{extension_path}"'
+            else:
+                extension_path = (
+                    f"{os.getcwd()}/python_core/Lib/site-packages/astronverse/browser_plugin/plugins/chromium-extension"
+                )
+                extension_path = extension_path.replace("/", os.sep)
+                open_args += f" --load-extension='{extension_path}'"
 
         # 默认新窗口
         if "--new-window" not in open_args:

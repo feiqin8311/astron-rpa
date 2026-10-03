@@ -5,7 +5,6 @@ from collections import deque
 
 from astronverse.trigger.core.config import config
 from astronverse.trigger.core.logger import logger
-from astronverse.trigger.server.gateway_client import execute_multiple_projects
 
 
 class TaskQueueManager:
@@ -84,6 +83,8 @@ class TaskQueueManager:
 
     def process_tasks(self):
         """处理监控队列中的任务"""
+        from astronverse.trigger.server.gateway_client import execute_multiple_projects
+
         while True:
             if not self.task_queue_monitor:
                 time.sleep(1)
@@ -105,7 +106,8 @@ class TaskQueueManager:
             if self.is_task_timeout(task_info):
                 self.task_queue_monitor.popleft()  # 移除超时任务
                 logger.info(
-                    f"任务等待时间超过{self.queue_config['max_wait_minutes']}分钟，已移除: {task_info.get('trigger_id')}"
+                    f"任务等待时间超过{self.queue_config['max_wait_minutes']}分钟，"
+                    f"已移除: {task_info.get('trigger_id')}"
                 )
                 continue
 

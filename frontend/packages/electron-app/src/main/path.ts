@@ -1,6 +1,7 @@
+import fs from 'node:fs'
 import path from 'node:path'
 
-import { app } from 'electron'
+import { app, shell } from 'electron'
 
 export const appPath = app.getAppPath()
 export const userDataPath = app.getPath('userData')
@@ -11,7 +12,11 @@ export const resourcePath = app.isPackaged ? path.join(appPath, '../') : path.jo
 // 打包后，数据存储在 userDataPath ，否则存储在 appPath 下的 data 目录
 export const appWorkPath = app.isPackaged ? userDataPath : path.join(appPath, 'data')
 export const pythonCore = path.join(appWorkPath, 'python_core')
-export const pythonExe = path.join(pythonCore, 'python.exe')
+export const pythonExe = process.env.ASTRON_PYTHON || (
+  process.platform === 'win32'
+    ? path.join(pythonCore, 'python.exe')
+    : path.join(pythonCore, 'bin', 'python3')
+)
 export const confPath = path.join(resourcePath, 'conf.yaml')
 export const d7zrPath = path.join(resourcePath, '7zr.exe')
 // 插件目录
@@ -25,7 +30,31 @@ export const extensionBaseUrl =  `rpa://${extensionHost}/`
 export const rendererPath = path.join(__dirname, '../renderer')
 export const windowBaseUrl  = app.isPackaged ? 'rpa://localhost/' : 'http://localhost:1420/'
 
+export function pythonSitePackages(coreDir: string = pythonCore): string {
+  if (process.platform === 'win32')
+    return path.join(coreDir, 'Lib', 'site-packages')
+  const libDir = path.join(coreDir, 'lib')
+  let version = 'python3.13'
+  try {
+    const names = fs.readdirSync(libDir).filter(name => /^python3\.\d+$/.test(name)).sort()
+    if (names.length)
+      version = names[names.length - 1]
+  }
+  catch {
+    // bundled python_core not extracted yet; keep the build.sh default
+  }
+  return path.join(libDir, version, 'site-packages')
+}
+
 export function openPath(targetPath: string): Promise<void> {
+  const resolvedPath = path.resolve(targetPath)
+  if (process.platform !== 'win32') {
+    return shell.openPath(resolvedPath).then((errorMessage) => {
+      if (errorMessage)
+        throw new Error(errorMessage)
+    })
+  }
+
   return new Promise((resolve, reject) => {
     const { exec } = require('node:child_process')
     const path = require('node:path')
@@ -34,7 +63,7 @@ export function openPath(targetPath: string): Promise<void> {
     targetPath = path.resolve(targetPath)
 
     // 根据操作系统选择命令
-    const openCommand = process.platform === 'win32' ? `start "" "${targetPath}"` : `xdg-open "${targetPath}"`
+    const openCommand = `start "" "${targetPath}"`
 
     exec(openCommand, (error) => {
       error ? reject(error) : resolve()

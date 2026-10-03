@@ -13,15 +13,43 @@ class Base64CodeType(Enum):
 
 class Clipboard:
     @staticmethod
+    def copy_str_clip(data: str = ""):
+        """
+        设置剪切板
+        """
+        if sys.platform == "darwin":
+            subprocess.run(
+                ["pbcopy"],
+                input=data,
+                text=True,
+                encoding="utf-8",
+                check=True,
+            )
+            return
+        pyperclip.copy(data)
+
+    @staticmethod
     def paste_str_clip() -> str:
         """
         获取剪切板
         :return:
         """
+        if sys.platform == "darwin":
+            result = subprocess.run(
+                ["pbpaste"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            return result.stdout
         return pyperclip.paste()
 
     @staticmethod
     def paste_html_clip() -> str:
+        if sys.platform == "darwin":
+            return Clipboard.paste_str_clip()
+
         if sys.platform != "win32":
             result = subprocess.run(
                 ["xclip", "-selection", "clipboard", "-o", "-t", "text/html"],

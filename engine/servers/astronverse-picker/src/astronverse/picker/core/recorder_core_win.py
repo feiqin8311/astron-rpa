@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -9,6 +10,7 @@ from typing import Any, Optional
 from astronverse.picker import (
     RECORDING_BLACKLIST,
     DrawResult,
+    IPickerCore,
     MKSign,
     OperationResult,
     PickerType,
@@ -16,10 +18,19 @@ from astronverse.picker import (
     RecordAction,
     Rect,
 )
-from astronverse.picker.core.picker_core_win import PickerCore
-from astronverse.picker.engines.uia_picker import UIAOperate
 from astronverse.picker.logger import logger
 from astronverse.picker.utils.process import find_real_application_process
+
+
+def cursor_pos() -> tuple[int, int]:
+    if sys.platform == "win32":
+        import win32api
+
+        return win32api.GetCursorPos()
+    import pyautogui
+
+    pos = pyautogui.position()
+    return int(round(pos.x)), int(round(pos.y))
 
 
 class RecordingState(Enum):
@@ -34,7 +45,7 @@ class RecordingState(Enum):
 class RecordPickerAdapter:
     """录制功能的拾取适配器"""
 
-    def __init__(self, picker_core: PickerCore):
+    def __init__(self, picker_core: IPickerCore):
         self.picker_core = picker_core
         self.enable_blacklist = True
 
@@ -67,15 +78,24 @@ class RecordPickerAdapter:
     def _handle_blacklist(self, highlight_client) -> Optional[DrawResult]:
         """处理黑名单逻辑"""
         try:
-            # 获取当前鼠标位置的控件信息
-            current_x, current_y = UIAOperate.get_cursor_pos()
+            current_x, current_y = cursor_pos()
             current_point = Point(current_x, current_y)
-            start_control = UIAOperate.get_windows_by_point(current_point)
-            if not start_control:
-                logger.info(f"获取点位所在uia-control出错{self.picker_core.last_point}")
-                raise Exception("拾取转换器出错，请退出项目重新开始")
+            if sys.platform == "win32":
+                from astronverse.picker.engines.uia_picker import UIAOperate
 
-            process_id = UIAOperate.get_process_id(start_control)
+                start_control = UIAOperate.get_windows_by_point(current_point)
+                if not start_control:
+                    logger.info(f"获取点位所在uia-control出错{self.picker_core.last_point}")
+                    raise Exception("拾取转换器出错，请退出项目重新开始")
+                process_id = UIAOperate.get_process_id(start_control)
+            else:
+                from astronverse.locator.core import ax_common
+
+                start_control = ax_common.element_at_point(current_point.x, current_point.y)
+                if not start_control:
+                    logger.info(f"获取点位所在ax-control出错{self.picker_core.last_point}")
+                    raise Exception("拾取转换器出错，请退出项目重新开始")
+                process_id = ax_common.pid_of(start_control)
             process_info = find_real_application_process(process_id)
             process_name = process_info["name"]
 
@@ -370,9 +390,10 @@ class RecordManager:
 
     def _continuous_drawing_loop(self):
         """持续绘框循环"""
-        import pythoncom
+        if sys.platform == "win32":
+            import pythoncom
 
-        pythoncom.CoInitialize()
+            pythoncom.CoInitialize()
         self.highlight_client.start_wnd("record")
         while not self.stop_drawing and self.state == RecordingState.RECORDING:
             try:
@@ -460,9 +481,7 @@ class RecordManager:
     def _get_current_element_rect(self) -> str:
         """获取当前鼠标位置的元素矩形信息"""
         try:
-            import win32api
-
-            x, y = win32api.GetCursorPos()
+            x, y = cursor_pos()
             if not hasattr(self, "cur_rect") or self.cur_rect is None:
                 raise ValueError("cur_rect 未初始化")
             # 判断鼠标是否在矩形范围内

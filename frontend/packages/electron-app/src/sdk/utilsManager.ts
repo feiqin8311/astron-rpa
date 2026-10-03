@@ -132,7 +132,22 @@ async function openPlugins() {
     userDataPath += '/'
   }
   if (appPath.startsWith('C:') || appPath.startsWith('c:') || appPath.startsWith('/')) {
-    shellopen(`${userDataPath}python_core/Lib/site-packages/astronverse/browser_plugin/plugins`)
+    if (appPath.startsWith('C:') || appPath.startsWith('c:')) {
+      shellopen(`${userDataPath}python_core/Lib/site-packages/astronverse/browser_plugin/plugins`)
+    }
+    else {
+      const pluginsPath = await pathJoin([
+        userDataPath.replace(/\/+$/, ''),
+        'python_core',
+        'lib',
+        'python3.13', // must match build.sh PYTHON_VERSION
+        'site-packages',
+        'astronverse',
+        'browser_plugin',
+        'plugins',
+      ])
+      shellopen(pluginsPath)
+    }
   }
   else {
     shellopen(`${appPath}data/python_core/Lib/site-packages/astronverse/browser_plugin/plugins`)

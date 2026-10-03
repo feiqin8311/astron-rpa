@@ -31,6 +31,7 @@
 | 操作系统 | 版本要求 | 支持状态 |
 |---------|---------|---------|
 | Windows | 10/11 | ✅ 主要支持 |
+| macOS | 13+ (Apple Silicon / Intel) | 🧪 实验性支持 |
 
 ### 硬件配置
 | 配置项 | 最低要求 | 推荐配置 |
@@ -491,6 +492,75 @@ skip_engine_start: false
 ```
 
 > **💡 提示：** 将 `rpa.example.com` 替换为实际的 HTTPS 网关域名。
+
+</details>
+
+#### 🍎 macOS / 🐧 Linux 环境
+
+<details open>
+<summary><b>环境要求与打包步骤</b></summary>
+
+<br>
+
+##### 1️⃣ 前置依赖准备
+- **Xcode Command Line Tools** (macOS): `xcode-select --install`
+- **uv** (0.8+): `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Node.js** (>= 22) 与 **pnpm** (>= 9): `brew install node pnpm` 或通过官方安装包安装
+- **tar** 与 **shasum** / **sha256sum**: 系统内置
+
+##### 2️⃣ 运行打包脚本 (`build.sh`)
+
+在项目根目录执行构建脚本：
+
+```bash
+# 🚀 完整构建（引擎 + 前端桌面应用）
+./build.sh
+
+# ⏭️ 只构建引擎（生成 resources/python_core.tar.gz）
+./build.sh --skip-frontend
+
+# ⏭️ 只构建前端桌面应用
+./build.sh --skip-engine
+
+# 🔧 指定本地 Python 3.13 目录（包含 bin/python3）
+./build.sh -p "/path/to/cpython-3.13-root"
+```
+
+**执行流程：**
+1. ✅ 自动通过 `uv` 准备独立便携式 Python 3.13（或使用 `-p` 参数指定）到目录 `build/python_core`
+2. ✅ 构建 RPA 引擎所有 workspace wheel 包到 `build/dist`
+3. ✅ 安装依赖与本地 wheel 包到 `build/python_core`
+4. ✅ 压缩 Python 核心环境到 `resources/python_core.tar.gz`，并生成 SHA-256 校验文件 `resources/python_core.tar.gz.sha256.txt`
+5. ✅ 安装前端依赖并打包桌面客户端（macOS 运行 `pnpm run build:mac`，Linux 运行 `pnpm run build:linux`）
+
+##### 3️⃣ 安装应用安装包
+
+打包完成路径：
+```
+frontend/packages/electron-app/dist/
+```
+- **macOS**: `.dmg` 安装包或 `.app` 应用程序
+- **Linux**: `.deb` 安装包
+
+##### 4️⃣ macOS 系统权限与首次启动注意
+
+在 macOS 系统上运行时，需特别注意系统权限配置与安全策略：
+
+- **首次启动未签名应用**：macOS Gatekeeper 安全防护会提示“无法打开，因为无法验证开发者”。请在 `访达` (Finder) 或 `应用程序` 文件夹中找到该应用，**右键单击（或按住 Control 单击）应用图标，选择“打开”**，并在弹出的确认对话框中再次点击“打开”。
+- **系统权限授权**：RPA 自动化执行需要控制其他应用、截取屏幕以及监听热键，请前往 **系统设置 > 隐私与安全性** 授予以下权限：
+  - **辅助功能 (Accessibility)**: 授权 **星辰RPA** / **astron-rpa**（用于桌面 UI 元素的识别、点击、文本输入等自动化操作）
+  - **屏幕录制 (Screen Recording)**: 授权 **星辰RPA** / **astron-rpa**（用于桌面截图与视觉拾取功能）
+  - **输入监控 (Input Monitoring)**: 授权 **星辰RPA** / **astron-rpa**（用于全局快捷键响应与键鼠监听）
+- **ffmpeg**: 录屏优先使用 `resources/ffmpeg`（若已放入资源目录），否则使用 `PATH` 中的 `ffmpeg`（`brew install ffmpeg`）。`ffmpeg.exe` 仅用于 Windows，不会打进 Mac 包。
+
+##### 5️⃣ 配置服务端地址
+
+修改 `conf.yaml` 中的服务端地址：macOS 位于 `astron-rpa.app/Contents/Resources/conf.yaml`，Linux 位于安装目录下的 `resources/conf.yaml`：
+
+```yaml
+remote_addr: https://rpa.example.com/
+skip_engine_start: false
+```
 
 </details>
 

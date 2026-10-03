@@ -16,6 +16,7 @@ import { h, ref, toRaw, watch } from 'vue'
 import { isBase64Image, trimBase64Header } from '@/utils/common'
 
 import { getImageURL } from '@/api/http/env'
+import { useAppConfigStore } from '@/stores/useAppConfig'
 import { useElementsStore } from '@/stores/useElementsStore'
 import { usePickStore } from '@/stores/usePickStore'
 import type { PickElementType } from '@/types/resource.d'
@@ -46,6 +47,7 @@ defineProps({
 const modal = NiceModal.useModal()
 const loading = ref('')
 const singleLoading = ref('') // 某个按钮loading状态
+const appConfig = useAppConfigStore()
 const useElements = useElementsStore()
 const usePick = usePickStore()
 const { t } = useTranslation()
@@ -68,7 +70,7 @@ const detailElementData = ref<PickElementType>({
   // 元素详情
   app: '',
   version: '',
-  type: 'uia',
+  type: appConfig.isMac ? 'ax' : 'uia',
   path: null,
 })
 const isShadow = ref(false) // 是否是阴影元素
@@ -266,7 +268,7 @@ watch(
       // 自定义编辑元素
       customData.value = elementCustomFormat(version, type, path)
       // 设置相似拾取按钮展示
-      similarButton.value = ['web', 'uia'].includes(type)
+      similarButton.value = ['web', 'uia', 'ax'].includes(type)
       formOption.value.pickType = type
       // 若是相似元素，获取到相似元素个数
       if (type === 'web') {
@@ -285,7 +287,7 @@ watch(
         // 设置元素匹配类型
         formOption.value.matchTypes = matchTypes || []
       }
-      else if (type === 'uia') {
+      else if (type === 'uia' || type === 'ax') {
         similarCount.value = picker_type === 'SIMILAR' ? similar_count : 0 // 设置相似元素个数
         formOption.value.customOptions = CUSTOM_OPTIONS.filter(
           item => item.value === VISUALIZATION,

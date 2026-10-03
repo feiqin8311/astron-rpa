@@ -1,5 +1,6 @@
 import random
 import subprocess
+import sys
 import time
 
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
@@ -90,9 +91,14 @@ class GuiKeyBoard:
             if not msg:
                 raise BaseException(CLIP_PASTE_ERROR, "Clip is empty.")
             else:
-                Keyboard.hotkey("ctrl", "v")
+                if sys.platform == "darwin":
+                    Keyboard.hotkey("command", "v")
+                else:
+                    Keyboard.hotkey("ctrl", "v")
                 Clipboard.clear()
         elif keyboard_type == KeyboardType.DRIVER:
+            if sys.platform == "darwin":
+                raise BaseException(DRIVE_ERROR, "macOS 不支持 VK.exe 驱动级键盘模拟")
             if message == "":
                 raise BaseException(KEYBOARD_MSG_ERROR, "输入内容为空，请检查输入内容")
 
@@ -105,6 +111,8 @@ class GuiKeyBoard:
             except subprocess.CalledProcessError as e:
                 raise BaseException(DRIVE_INPUT_ERROR, "键盘驱动输入没有管理员权限")
         elif keyboard_type == KeyboardType.GBLID:
+            if sys.platform != "win32":
+                raise BaseException(GHOST_DRIVE_ERROR, "macOS 不支持 ghostbox 驱动级键盘模拟")
             from astronverse.input.code import ghostbox as gb
 
             device = gb.opendevicebyid(0x5188, 0x1801)

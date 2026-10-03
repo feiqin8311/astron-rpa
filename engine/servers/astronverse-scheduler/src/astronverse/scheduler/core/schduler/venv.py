@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import sys
 
 from astronverse.scheduler.logger import logger
@@ -40,22 +41,23 @@ class VenvManager:
         if os.path.exists(svc.config.venv_base_dir):
             files = os.listdir(svc.config.venv_base_dir)
             for file_name in files:
+                target_path = os.path.join(svc.config.venv_base_dir, file_name)
                 if file_name.startswith("."):
                     try:
                         # os.remove 无法删除.文件
                         if sys.platform == "win32":
-                            os.system("rd /s/q {}".format(os.path.join(svc.config.venv_base_dir, file_name)))
+                            os.system("rd /s/q {}".format(target_path))
                         else:
-                            os.system("rm -rf {}".format(os.path.join(svc.config.venv_base_dir, file_name)))
+                            shutil.rmtree(target_path, ignore_errors=True)
                     except Exception as e:
                         pass
                 if not os.path.exists(os.path.join(svc.config.venv_base_dir, file_name, "venv")):
                     try:
                         # os.remove 无法删除.文件
                         if sys.platform == "win32":
-                            os.system("rd /s/q {}".format(os.path.join(svc.config.venv_base_dir, file_name)))
+                            os.system("rd /s/q {}".format(target_path))
                         else:
-                            os.system("rm -rf {}".format(os.path.join(svc.config.venv_base_dir, file_name)))
+                            shutil.rmtree(target_path, ignore_errors=True)
                     except Exception as e:
                         pass
 

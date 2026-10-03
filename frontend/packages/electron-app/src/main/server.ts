@@ -6,7 +6,7 @@ import { to } from 'await-to-js'
 import { toUnicode } from '../common'
 
 import { mainToRender } from './event'
-import { extract7z } from './file'
+import { extract7z, extractTarGz } from './file'
 import logger from './log'
 import { appWorkPath, confPath, pythonExe, resourcePath } from './path'
 import { getMainWindow } from './window'
@@ -28,11 +28,18 @@ export function checkPythonRpaProcess() {
   return new Promise((resolve) => {
     // linux 上检测 python 进程中 命令行中包含 envJson.SCHEDULER_NAME 的进程
     if (process.platform !== 'win32') {
-      exec(`ps aux | grep "${envJson.SCHEDULER_NAME}"`, (error, stdout) => {
-        if (error) {
+      const child = spawn('pgrep', ['-f', envJson.SCHEDULER_NAME])
+      let stdout = ''
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+      child.on('error', () => resolve(false))
+      child.on('close', (code) => {
+        if (code !== 0)
           return resolve(false)
-        }
-        const isRunning = stdout.trim() !== ''
+        const pids = stdout.trim().split(/\s+/).filter(Boolean)
+        const exclude = new Set([String(process.pid), String(child.pid)])
+        const isRunning = pids.some(pid => !exclude.has(pid))
         resolve(isRunning)
       })
     }
@@ -94,6 +101,27 @@ export async function startServer() {
  */
 export function closeSubProcess() {
   return new Promise<void>((resolve) => {
+    if (process.platform !== 'win32') {
+      const child = spawn(
+        pythonExe,
+        ['-m', envJson.SCHEDULER_NAME, '--stop=True'],
+        { cwd: appWorkPath },
+      )
+      child.on('error', (error) => {
+        logger.error(`${envJson.SCHEDULER_NAME} closeSubProcess error: ${error}`)
+        resolve()
+      })
+      child.on('close', (code) => {
+        if (code === 0) {
+          logger.info(`${envJson.SCHEDULER_NAME} closeSubProcess success`)
+        }
+        else {
+          logger.error(`${envJson.SCHEDULER_NAME} closeSubProcess error: exit ${code}`)
+        }
+        resolve()
+      })
+      return
+    }
     exec(
       `"${pythonExe}" -m ${envJson.SCHEDULER_NAME} --stop="True"`,
       { cwd: appWorkPath },
@@ -125,17 +153,29 @@ function msgFilter(msg: string) {
   }
 }
 
+function archiveBaseName(fileName: string): string {
+  if (fileName.endsWith('.tar.gz'))
+    return fileName.slice(0, -'.tar.gz'.length)
+  if (fileName.endsWith('.7z'))
+    return fileName.slice(0, -'.7z'.length)
+  return fileName
+}
+
 /**
  * 检查资源目录中需要解压的Python包
  * @returns 需要解压的压缩包文件名数组
  */
 async function checkNeedExtractPythonPackage() {
-  if (process.platform === 'win32') {
+  try {
     const fileNames = await fs.readdir(resourcePath)
-    return fileNames.filter(fileName => fileName.endsWith('.7z'))
+    if (process.platform === 'win32')
+      return fileNames.filter(fileName => fileName.endsWith('.7z'))
+    return fileNames.filter(fileName => fileName.endsWith('.tar.gz'))
   }
-  logger.info('No python package in resources for non-windows platform')
-  return []
+  catch (error) {
+    logger.error(`读取资源目录失败: ${resourcePath}`, error)
+    return []
+  }
 }
 
 /**
@@ -159,7 +199,7 @@ async function readHashFile(hashFilePath: string): Promise<string> {
  * @returns 是否需要重新解压
  * */
 async function checkSingleFile(packageFile: string): Promise<boolean> {
-  const archiveName = packageFile.replace('.7z', '')
+  const archiveName = archiveBaseName(packageFile)
   const archivePath = join(appWorkPath, archiveName)
   const hashFileName = `${packageFile}.sha256.txt`
   const resourceHashPath = join(resourcePath, hashFileName)
@@ -284,6 +324,12 @@ export async function startBackend() {
     return
   }
 
+  if (process.env.ASTRON_PYTHON) {
+    logger.info(`ASTRON_PYTHON set, skip python package extract: ${process.env.ASTRON_PYTHON}`)
+    startServer()
+    return
+  }
+
   // 安装资源目录下的需要解压的 python 包
   const packageFiles = await checkNeedExtractPythonPackage()
 
@@ -329,7 +375,7 @@ export async function startBackend() {
  */
 async function extractAndCleanFile(fileName: string, percentCallback: (percent: number) => void): Promise<void> {
   const archivePath = join(resourcePath, fileName)
-  const outputDir = join(appWorkPath, fileName.replace('.7z', ''))
+  const outputDir = join(appWorkPath, archiveBaseName(fileName))
   const tempOutputDir = `${outputDir}.temp`
 
   // 1. 确保临时目录/目标目录不存在
@@ -345,7 +391,10 @@ async function extractAndCleanFile(fileName: string, percentCallback: (percent: 
 
   // 2. 解压到临时目录
   logger.info(`开始解压到临时目录: ${tempOutputDir}`)
-  await extract7z(archivePath, tempOutputDir, percentCallback)
+  if (process.platform === 'win32')
+    await extract7z(archivePath, tempOutputDir, percentCallback)
+  else
+    await extractTarGz(archivePath, tempOutputDir, percentCallback)
 
   // 3. 将临时目录重命名为目标目录
   logger.info(`重命名为目标目录: ${outputDir}`)

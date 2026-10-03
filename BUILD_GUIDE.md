@@ -31,6 +31,7 @@
 | OS | Version | Support Status |
 |---------|---------|---------|
 | Windows | 10/11 | ✅ Primary Support |
+| macOS | 13+ (Apple Silicon / Intel) | 🧪 Experimental |
 
 ### Hardware Configuration
 | Component | Minimum | Recommended |
@@ -500,6 +501,75 @@ skip_engine_start: false
 ```
 
 > **💡 Tip:** Replace `rpa.example.com` with your actual HTTPS gateway name.
+
+</details>
+
+#### 🍎 macOS / 🐧 Linux Environment
+
+<details open>
+<summary><b>Prerequisites & Packaging Steps</b></summary>
+
+<br>
+
+##### 1️⃣ Prerequisites
+- **Xcode Command Line Tools** (macOS): `xcode-select --install`
+- **uv** (0.8+): `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Node.js** (>= 22) and **pnpm** (>= 9): `brew install node pnpm` or via official installers
+- **tar** and **shasum** / **sha256sum**: Pre-installed on macOS/Linux
+
+##### 2️⃣ Run Packaging Script (`build.sh`)
+
+Execute `build.sh` from the repository root:
+
+```bash
+# 🚀 Full build (engine + frontend desktop app)
+./build.sh
+
+# ⏭️ Build engine only (generates resources/python_core.tar.gz)
+./build.sh --skip-frontend
+
+# ⏭️ Build frontend only
+./build.sh --skip-engine
+
+# 🔧 Use a custom Python 3.13 directory (must contain bin/python3)
+./build.sh -p "/path/to/cpython-3.13-root"
+```
+
+**Execution Flow:**
+1. ✅ Automatically prepares standalone Python 3.13 via `uv` (or uses `-p`) in `build/python_core`
+2. ✅ Builds all RPA engine workspace wheels into `build/dist`
+3. ✅ Installs wheels and dependencies into `build/python_core`
+4. ✅ Compresses Python core into `resources/python_core.tar.gz` and writes SHA-256 checksum to `resources/python_core.tar.gz.sha256.txt`
+5. ✅ Installs frontend dependencies and builds desktop app (`pnpm run build:mac` on macOS, `pnpm run build:linux` on Linux)
+
+##### 3️⃣ Install Application Package
+
+Artifacts are written to:
+```
+frontend/packages/electron-app/dist/
+```
+- **macOS**: `.dmg` installer or `.app` bundle
+- **Linux**: `.deb` package
+
+##### 4️⃣ macOS System Permissions & First Launch
+
+On macOS, security and permission settings require attention:
+
+- **First Launch (Unsigned Builds)**: macOS Gatekeeper may display a prompt stating the app cannot be opened because it is from an unidentified developer. Right-click (or Control-click) the application in `Applications` or `Finder`, select **Open**, and click **Open** in the confirmation dialog.
+- **System Permissions**: For RPA automation to control applications, capture screens, and monitor hotkeys, grant permissions under **System Settings > Privacy & Security**:
+  - **Accessibility** (辅助功能): Grant permission to **星辰RPA** / **astron-rpa** (required for UI element clicking, typing, and window interactions)
+  - **Screen Recording** (屏幕录制): Grant permission to **星辰RPA** / **astron-rpa** (required for desktop screen capture and visual element picking)
+  - **Input Monitoring** (输入监控): Grant permission to **星辰RPA** / **astron-rpa** (required for global shortcuts and mouse/keyboard hooks)
+- **ffmpeg**: Screen recording uses a bundled `resources/ffmpeg` binary if present, otherwise `PATH` (`brew install ffmpeg`). `ffmpeg.exe` is Windows-only and is not copied into the Mac app.
+
+##### 5️⃣ Configure Server Address
+
+Modify `conf.yaml`: on macOS it is at `astron-rpa.app/Contents/Resources/conf.yaml`; on Linux at `resources/conf.yaml` under the installation directory:
+
+```yaml
+remote_addr: https://rpa.example.com/
+skip_engine_start: false
+```
 
 </details>
 

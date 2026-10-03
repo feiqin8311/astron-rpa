@@ -27,6 +27,8 @@ os.makedirs(os.path.join(current_directory, "imgs"), exist_ok=True)
 
 if sys.platform == "win32":
     from astronverse.vision_picker.core.core_win import PickCore, RectHandler
+elif sys.platform == "darwin":
+    from astronverse.vision_picker.core.core_mac import PickCore, RectHandler
 elif platform.system() == "Linux":
     from astronverse.vision_picker.core.core_unix import PickCore, RectHandler
 else:
@@ -266,7 +268,10 @@ class CVPicker:
             # 按下CTRL 进入普通拾取状态
             self.__status = Status.CV_CTRL
             logger.info("按下CTRL：{}".format(self.__status))
-            self.desktop_image = pyautogui.screenshot()
+            if sys.platform == "darwin":
+                self.desktop_image = IPickCore.screenshot()
+            else:
+                self.desktop_image = pyautogui.screenshot()
 
         if (
             ({keyboard.Key.alt_l} == self.current_keys or {keyboard.Key.alt_gr} == self.current_keys)
@@ -299,7 +304,10 @@ class CVPicker:
         # 拾取界面处理，获取界面截图
         time.sleep(0.1)  # 等待0.1s,防止截图时高亮提示框未隐藏
         if self.pick_type == PickType.TARGET:
-            self.desktop_image = pyautogui.screenshot()
+            if sys.platform == "darwin":
+                self.desktop_image = IPickCore.screenshot()
+            else:
+                self.desktop_image = pyautogui.screenshot()
             # self.desktop_image.save(desktop_filepath)
         elif self.pick_type == PickType.ANCHOR:
             if not desktop_image:

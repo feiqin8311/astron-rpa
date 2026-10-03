@@ -53,6 +53,24 @@ class Picker:
                 name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
             )
             self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
+        elif sys.platform == "darwin":
+            highlighter_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "mac",
+                "highlighter.py",
+            )
+            self.highlighter = SubPopen(
+                name="rpa_highlighter",
+                cmd=[
+                    python_executable,
+                    highlighter_path,
+                    "{}".format(self.svc.rpa_hl_port),
+                ],
+            )
+            self.vision_picker = SubPopen(
+                name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
+            )
+            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
         else:
             highlighter_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),

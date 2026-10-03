@@ -26,7 +26,76 @@ class Process:
         """获取所有在当前目录Python进程"""
 
         if sys.platform != "win32":
-            return []
+            # 收集自己的信息（当前进程及其所有祖先进程）
+            self_proc_id_set = set()
+            try:
+                proc = psutil.Process(os.getpid())
+                while proc:
+                    self_proc_id_set.add(proc.pid)
+                    proc = proc.parent()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+            target_prefixes = (
+                sys.prefix,
+                os.path.realpath(sys.prefix),
+                sys.base_prefix,
+                os.path.realpath(sys.base_prefix),
+            )
+
+            all_process = []
+            for proc in psutil.process_iter(["pid", "name", "exe", "cmdline"]):
+                try:
+                    pid = proc.info.get("pid") or proc.pid
+                    if pid in self_proc_id_set:
+                        continue
+
+                    exe_path = proc.info.get("exe")
+                    if not exe_path:
+                        try:
+                            exe_path = proc.exe()
+                        except Exception:
+                            pass
+
+                    cmdline = proc.info.get("cmdline")
+                    if cmdline is None:
+                        try:
+                            cmdline = proc.cmdline()
+                        except Exception:
+                            cmdline = []
+
+                    candidate_exe = exe_path or (cmdline[0] if cmdline else "")
+                    if not candidate_exe:
+                        continue
+
+                    exe_real = os.path.realpath(candidate_exe)
+                    # 检查其 exe/cmdline python 是否在当前 sys.executable 相同的 python 安装路径下
+                    is_same_python = any(
+                        p == prefix or p.startswith(prefix.rstrip(os.sep) + os.sep)
+                        for prefix in target_prefixes
+                        for p in (candidate_exe, exe_real)
+                    )
+                    if not is_same_python:
+                        continue
+
+                    # 检查 cmdline 包含 -m astronverse.* 或 exe 路径包含 astron-rpa
+                    has_astron_module = False
+                    if cmdline:
+                        for i in range(len(cmdline) - 1):
+                            if cmdline[i] == "-m" and cmdline[i + 1].startswith("astronverse."):
+                                has_astron_module = True
+                                break
+
+                    has_astron_exe = "astron-rpa" in (exe_path or "") or "astron-rpa" in exe_real
+
+                    if has_astron_module or has_astron_exe:
+                        all_process.append(proc)
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+                except Exception:
+                    continue
+
+            return all_process
 
         # 收集所有需要关联的进程
         all_process_ids = []
