@@ -10,10 +10,9 @@
     }
   }
   .tab-pane-text-left {
-    .ant-tabs-nav-list {
-      .ant-tabs-tab {
-        text-align: left !important;
-      }
+    > .ant-tabs-nav {
+      display: none;
+      margin: 0;
     }
   }
   .ant-tabs > .ant-tabs-nav {
@@ -115,6 +114,21 @@
     margin-bottom: 8px !important;
     .ant-form-item-control-input {
       min-height: auto !important;
+    }
+    .ant-checkbox-wrapper {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      white-space: normal;
+    }
+    .ant-checkbox {
+      flex: none;
+      margin-top: 3px;
+    }
+    .ant-checkbox + span {
+      flex: 1;
+      min-width: 0;
+      white-space: normal;
     }
   }
   .form-item-remember {

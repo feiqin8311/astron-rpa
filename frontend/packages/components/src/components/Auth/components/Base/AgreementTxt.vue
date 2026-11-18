@@ -41,7 +41,7 @@ function openLink(linkType: 'service' | 'privacy') {
 </script>
 
 <template>
-  <div class="flex justify-start items-center text-center text-[#000000D9] dark:text-[#FFFFFFD9] text-[14px]">
+  <div class="agreement-txt text-left text-[#000000D9] dark:text-[#FFFFFFD9] text-[14px] leading-[22px]">
     {{ text }}
     <Button class="p-0 h-auto" :class="type === 'show' ? '' : 'mx-[4px]'" type="link" @click="openLink('service')">
       {{ t('components.auth.serviceAgreement') }}
