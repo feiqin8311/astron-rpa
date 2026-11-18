@@ -262,10 +262,17 @@ services:
       - REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
       - AICHAT_BASE_URL=${AICHAT_BASE_URL}
       - AICHAT_API_KEY=${AICHAT_API_KEY}
+      - STORAGE_DRIVER=${STORAGE_DRIVER:-local}
+      - STORAGE_LOCAL_DIR=/app/data/storage
+      - MINIO_URL=${MINIO_URL:-http://rpa-opensource-minio:9000}
+      - MINIO_BUCKET=${MINIO_BUCKET:-rpa-resource}
+      - MINIO_AK=${MINIO_AK:-}
+      - MINIO_SK=${MINIO_SK:-}
     # ports:
     #   - "8020:8020"
     volumes:
       - ../backend/openapi-service/app:/app/app
+      - ./data/openapi-storage:/app/data/storage
     depends_on:
       mysql:
         condition: service_healthy
@@ -312,6 +319,8 @@ services:
     env_file: *env_file
     environment:
       - OPENAPI_WORKFLOWS_UPSERT_URL=${OPENAPI_WORKFLOWS_UPSERT_URL:-http://openapi-service:8020/workflows/upsert}
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - AUTH_BASE_URL=${AUTH_BASE_URL:-http://rpa-opensource-rpa-auth:10251}
     # ports:
     #   - "8040:8040"
     volumes:

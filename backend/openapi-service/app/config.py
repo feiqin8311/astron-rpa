@@ -6,15 +6,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "RPA OpenAPI"
     API_VERSION: str = "1.0"
-    DATABASE_URL: str = "mysql+aiomysql://root:rpa123456@localhost:3306/rpa"
-    DATABASE_USERNAME: str = "root"
-    DATABASE_PASSWORD: str = "rpa123456"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    DATABASE_URL: str
+    DATABASE_USERNAME: str
+    DATABASE_PASSWORD: str
+    REDIS_URL: str
 
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str = "logs"
     STORAGE_DRIVER: str = "local"  # "local" or "s3"
     STORAGE_LOCAL_DIR: str = "data/storage"
+
+    MINIO_URL: str = ""
+    MINIO_BUCKET: str = "rpa-resource"
+    MINIO_AK: str = ""
+    MINIO_SK: str = ""
 
     # URL credentials are disabled by default because query strings commonly
     # appear in browser history and proxy access logs.

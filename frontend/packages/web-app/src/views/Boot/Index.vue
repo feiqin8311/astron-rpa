@@ -2,20 +2,29 @@
 import { Auth } from '@rpa/components/auth'
 import { theme } from 'ant-design-vue'
 import { to } from 'await-to-js'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 
 import { base64ToString } from '@/utils/common'
 import BUS from '@/utils/eventBus'
 import { storage } from '@/utils/storage'
 
+import { expiredModal, getAPIBaseURL } from '@/api/http/env'
 import BootHeader from '@/components/Boot/Header.vue'
 import LaunchCarousel from '@/components/Boot/LaunchCarousel.vue'
 import ConfigProvider from '@/components/ConfigProvider/index.vue'
 import Loading from '@/components/Loading.vue'
 import { utilsManager, windowManager } from '@/platform'
+import { useAppConfigStore } from '@/stores/useAppConfig'
 
 const { token } = theme.useToken()
+const appStore = useAppConfigStore()
+const { appInfo } = storeToRefs(appStore)
 const progress = ref(0)
+const isLogin = ref(false)
+const loginFormRef = ref()
+const autoLogin = ref(true)
+const isLocalMode = import.meta.env.VITE_AUTH_MODE === 'local'
 
 function loginWindowStep() {
   windowManager.restoreLoginWindow()
@@ -47,8 +56,25 @@ utilsManager.listenEvent('scheduler-event', (eventMsg) => {
 })
 
 function loginAuto() {
-  // 单人本地使用模式：隐藏并跳过登录注册界面，直接进入主应用
-  loginSuccess({ name: '本地用户', loginName: 'admin' })
+  if (isLocalMode) {
+    loginSuccess({ name: '本地用户', loginName: 'admin' })
+    return
+  }
+  if (sessionStorage.getItem('launch') === '1') {
+    isLogin.value = true
+    const searchParams = new URLSearchParams(window.location.search)
+    const code = searchParams.get('code')
+    const tenantType = searchParams.get('tenantType')
+    autoLogin.value = !code
+    if (code === '900005') {
+      expiredModal(tenantType)
+      nextTick(() => {
+        console.log(loginFormRef)
+        if (tenantType === 'professional')
+          loginFormRef.value.autoPreLogin()
+      })
+    }
+  }
 }
 
 function loginSuccess(userInfo: any) {
@@ -61,14 +87,10 @@ onMounted(() => {
 })
 
 window.onload = async () => {
-  if (sessionStorage.getItem('launch') === '1') {
-    loginAuto()
-    return
-  }
+  loginAuto()
   const [err] = await to(utilsManager.invoke('main_window_onload'))
   if (err) {
     console.error('main_window_onload 调用失败: ', err)
-    loginAuto()
   }
 }
 
@@ -83,7 +105,7 @@ onUnmounted(() => {
       <template #header>
         <BootHeader />
       </template>
-      <template #container>
+      <template v-if="!isLogin || isLocalMode" #container>
         <div
           class="flex items-center justify-center"
         >
@@ -101,7 +123,7 @@ onUnmounted(() => {
           </LaunchCarousel>
         </div>
       </template>
-      <!-- 单人本地模式：隐藏登录与注册表单 -->
+      <Auth.LoginForm v-if="isLogin && !isLocalMode" ref="loginFormRef" :base-url="getAPIBaseURL()" :auto-login="autoLogin" :auth-type="appInfo.appAuthType" :edition="appInfo.appEdition" @finish="loginSuccess" />
     </Auth.PageLayout>
     <Loading />
   </ConfigProvider>

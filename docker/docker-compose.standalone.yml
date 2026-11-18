@@ -1,0 +1,18 @@
+# Standalone / Single-user local RPA compose override.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.standalone.yml up -d
+services:
+  robot-service:
+    environment:
+      - AUTH_ENABLED=false
+      - AUTH_BASE_URL=http://localhost:8040/api/robot
+
+  openapi-service:
+    environment:
+      - STORAGE_DRIVER=local
+
+  rpa-auth:
+    profiles: ["multi-tenant"]
+
+  casdoor:
+    profiles: ["multi-tenant"]

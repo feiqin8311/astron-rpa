@@ -276,8 +276,11 @@ router.beforeEach(async (to, _from, next) => {
     if (first)
       return next(first)
 
-    // 单人模式：直接放行所有功能，不重定向至登录页
-    return next()
+    if (import.meta.env.VITE_AUTH_MODE === 'local') {
+      return next()
+    }
+    window.location.href = '/boot.html?code=403' // 无权限访问，跳转到登录页
+    return
   }
   next()
 })

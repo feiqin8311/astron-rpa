@@ -111,12 +111,6 @@ public class SessionValidationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // 支持 Bearer JWT 或本地免密认证，直接放行
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.isNotBlank(authHeader) && authHeader.startsWith("Bearer ")) {
-            return true;
-        }
-
         if (StringUtils.isBlank(sessionFilterExclude)) {
             return false;
         }

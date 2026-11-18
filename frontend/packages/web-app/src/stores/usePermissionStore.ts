@@ -17,7 +17,8 @@ const DEFAULT_PERMISSIONS: PermItem[] = [
 ]
 
 export const usePermissionStore = defineStore('permission', () => {
-  const permissionAction = ref<PermItem[]>(DEFAULT_PERMISSIONS)
+  const isLocalAuthMode = import.meta.env.VITE_AUTH_MODE === 'local'
+  const permissionAction = ref<PermItem[]>(isLocalAuthMode ? DEFAULT_PERMISSIONS : [])
   const fetched = ref(false)
 
   const initPermission = async () => {
@@ -28,14 +29,19 @@ export const usePermissionStore = defineStore('permission', () => {
       if (data && data.length > 0) {
         setPermission(data)
       }
-      else {
+      else if (isLocalAuthMode) {
         setPermission(DEFAULT_PERMISSIONS)
       }
       fetched.value = true
     }
     catch (e) {
-      console.warn('[Permission] fetch failed, fallback to all permissions', e)
-      setPermission(DEFAULT_PERMISSIONS)
+      if (isLocalAuthMode) {
+        console.warn('[Permission] fetch failed, fallback to all permissions in local mode', e)
+        setPermission(DEFAULT_PERMISSIONS)
+      }
+      else {
+        console.error('[Permission] fetch failed', e)
+      }
       fetched.value = true
     }
   }
@@ -44,13 +50,17 @@ export const usePermissionStore = defineStore('permission', () => {
     permissionAction.value = value
   }
 
-  const can = (_resource: string, _action = 'all'): boolean => {
-    // 单人模式：默认拥有全部权限
-    return true
+  const can = (resource: string, action = 'all'): boolean => {
+    if (isLocalAuthMode) {
+      return true
+    }
+    return permissionAction.value.some(
+      p => p.resource === resource && p.actions?.includes(action),
+    )
   }
 
   const reset = () => {
-    permissionAction.value = DEFAULT_PERMISSIONS
+    permissionAction.value = isLocalAuthMode ? DEFAULT_PERMISSIONS : []
     fetched.value = false
   }
 
