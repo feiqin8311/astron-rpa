@@ -192,6 +192,7 @@ version = "1.0.1"
 source = { editable = "../../components/astronverse-input" }
 dependencies = [
     { name = "astronverse-actionlib" },
+    { name = "astronverse-locator" },
     { name = "pillow", marker = "sys_platform == 'linux'" },
     { name = "pyautogui" },
     { name = "pynput" },
@@ -202,6 +203,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "astronverse-actionlib", editable = "../../shared/astronverse-actionlib" },
+    { name = "astronverse-locator", editable = "../../shared/astronverse-locator" },
     { name = "pillow", marker = "sys_platform == 'linux'" },
     { name = "pyautogui" },
     { name = "pynput" },
@@ -214,13 +216,16 @@ name = "astronverse-locator"
 version = "1.0.2"
 source = { editable = "../../shared/astronverse-locator" }
 dependencies = [
-    { name = "astronverse-baseline", marker = "sys_platform != 'linux'" },
-    { name = "numpy", marker = "sys_platform != 'linux'" },
-    { name = "psutil", marker = "sys_platform != 'linux'" },
-    { name = "pyautogui", marker = "sys_platform != 'linux'" },
+    { name = "astronverse-baseline" },
+    { name = "numpy" },
+    { name = "psutil" },
+    { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'" },
+    { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
-    { name = "requests", marker = "sys_platform != 'linux'" },
+    { name = "requests" },
     { name = "uiautomation", marker = "sys_platform == 'win32'" },
 ]
 
@@ -230,6 +235,9 @@ requires-dist = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "pyautogui" },
+    { name = "pygobject", marker = "sys_platform == 'linux'", specifier = ">=3.42,<3.51" },
+    { name = "pyobjc-framework-applicationservices", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "pythonnet", marker = "sys_platform == 'win32'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "requests" },
@@ -351,6 +359,7 @@ version = "1.0.1"
 source = { editable = "../../components/astronverse-window" }
 dependencies = [
     { name = "astronverse-actionlib" },
+    { name = "astronverse-locator" },
     { name = "dogtail", marker = "sys_platform == 'linux'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "uiautomation", marker = "sys_platform == 'win32'" },
@@ -359,6 +368,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "astronverse-actionlib", editable = "../../shared/astronverse-actionlib" },
+    { name = "astronverse-locator", editable = "../../shared/astronverse-locator" },
     { name = "dogtail", marker = "sys_platform == 'linux'" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "uiautomation", marker = "sys_platform == 'win32'" },
@@ -416,6 +426,8 @@ dependencies = [
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/84/85/57c314a6b35336efbbdc13e5fc9ae13f6b60a0647cfa7c1221178ac6d8ae/brotlicffi-1.2.0.0.tar.gz", hash = "sha256:34345d8d1f9d534fcac2249e57a4c3c8801a33c9942ff9f8574f67a175e17adb", size = 476682, upload-time = "2025-11-21T18:17:57.334Z" }
 wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/c9/849a669b3b3bb8ac96005cdef04df4db658c33443a7fc704a6d4a2f07a56/brotlicffi-1.2.0.0-cp314-cp314t-win32.whl", hash = "sha256:a8079e8ecc32ecef728036a1d9b7105991ce6a5385cf51ee8c02297c90fb08c2", size = 349046, upload-time = "2026-03-05T17:57:42.76Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/25/09c0fd21cfc451fa38ad538f4d18d8be566746531f7f27143f63f8c45a9f/brotlicffi-1.2.0.0-cp314-cp314t-win_amd64.whl", hash = "sha256:ca90c4266704ca0a94de8f101b4ec029624273380574e4cf19301acfa46c61a0", size = 385653, upload-time = "2026-03-05T17:57:44.224Z" },
     { url = "https://files.pythonhosted.org/packages/1b/37/293a9a0a7caf17e6e657668bebb92dfe730305999fe8c0e2703b8888789c/brotlicffi-1.2.0.0-cp38-abi3-win32.whl", hash = "sha256:23e5c912fdc6fd37143203820230374d24babd078fc054e18070a647118158f6", size = 343085, upload-time = "2025-11-21T18:17:48.887Z" },
     { url = "https://files.pythonhosted.org/packages/07/6b/6e92009df3b8b7272f85a0992b306b61c34b7ea1c4776643746e61c380ac/brotlicffi-1.2.0.0-cp38-abi3-win_amd64.whl", hash = "sha256:f139a7cdfe4ae7859513067b736eb44d19fae1186f9e99370092f6915216451b", size = 378586, upload-time = "2025-11-21T18:17:50.531Z" },
 ]
@@ -995,6 +1007,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pycairo"
+version = "1.29.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/5e/19ab2572981a996ce96b853a189d2dcced40506b67d9555a7568457abcf2/pycairo-1.29.2.tar.gz", hash = "sha256:3e69fff74fe64f5ba2dfa31f67c6bdf26413342574047437d2ac520d35e9a489", size = 666308, upload-time = "2026-10-04T19:11:03.81Z" }
+
+[[package]]
 name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
@@ -1071,6 +1089,15 @@ dependencies = [
     { name = "pyrect" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/70/c7a4f46dbf06048c6d57d9489b8e0f9c4c3d36b7479f03c5ca97eaa2541d/PyGetWindow-0.0.9.tar.gz", hash = "sha256:17894355e7d2b305cd832d717708384017c1698a90ce24f6f7fbf0242dd0a688", size = 9699, upload-time = "2020-10-04T02:12:50.806Z" }
+
+[[package]]
+name = "pygobject"
+version = "3.50.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pycairo", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/5d/f2946cc6c1baf56dee6e942af8cfa16472538a8ad9d780d9f484e7554288/pygobject-3.50.2.tar.gz", hash = "sha256:ece6b860aab77cb649fdfc6e88d8a83765e7a62f7ffd39a628d6e2a0d397a7ff", size = 1085854, upload-time = "2025-10-18T13:44:45.634Z" }
 
 [[package]]
 name = "pymsgbox"
