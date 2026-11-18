@@ -1,7 +1,10 @@
 package com.iflytek.rpa.conf;
 
+import com.iflytek.rpa.common.feign.entity.Tenant;
+import com.iflytek.rpa.common.feign.entity.TenantExpirationDto;
 import com.iflytek.rpa.common.feign.entity.User;
 import com.iflytek.rpa.common.feign.entity.dto.RoleBaseDto;
+import com.iflytek.rpa.common.feign.entity.dto.TenantInfoDto;
 import com.iflytek.rpa.common.feign.entity.dto.UserExtendDto;
 import com.iflytek.rpa.utils.response.AppResponse;
 import java.util.Collections;
@@ -34,6 +37,15 @@ public class LocalAuthMockController {
         return user;
     }
 
+    private Tenant createLocalTenant() {
+        Tenant tenant = new Tenant();
+        tenant.setId("default");
+        tenant.setName("默认空间");
+        tenant.setTenantCode("default");
+        tenant.setStatus(1);
+        return tenant;
+    }
+
     @GetMapping("/user/info")
     public AppResponse<User> getLoginUser() {
         return AppResponse.success(createLocalUser());
@@ -60,5 +72,64 @@ public class LocalAuthMockController {
     public AppResponse<List<User>> queryAllListByOrgId(
             @RequestParam(value = "orgId", required = false) String orgId) {
         return AppResponse.success(Collections.singletonList(createLocalUser()));
+    }
+
+    @GetMapping("/tenant/getTenantId")
+    public AppResponse<String> getTenantId() {
+        return AppResponse.success("default");
+    }
+
+    @GetMapping("/tenant/current/id")
+    public AppResponse<String> getCurrentTenantId() {
+        return AppResponse.success("default");
+    }
+
+    @GetMapping("/tenant/current/name")
+    public AppResponse<String> getCurrentTenantName() {
+        return AppResponse.success("默认空间");
+    }
+
+    @GetMapping("/user/getNameById")
+    public AppResponse<String> getNameById(@RequestParam(value = "id", required = false) String id) {
+        return AppResponse.success("本地用户");
+    }
+
+    @GetMapping("/tenant/info")
+    public AppResponse<Tenant> queryTenantInfoById(
+            @RequestParam(value = "tenantId", required = false) String tenantId) {
+        return AppResponse.success(createLocalTenant());
+    }
+
+    @GetMapping("/tenant/getTenantInfo")
+    public AppResponse<TenantInfoDto> getTenantInfo() {
+        TenantInfoDto dto = new TenantInfoDto();
+        dto.setId("default");
+        dto.setName("默认空间");
+        dto.setCode("default");
+        dto.setManagerId("local-user");
+        dto.setManagerName("本地用户");
+        return AppResponse.success(dto);
+    }
+
+    @GetMapping("/tenant/list")
+    public AppResponse<List<Tenant>> getTenantList(
+            @RequestParam(value = "tempToken", required = false) String tempToken) {
+        return AppResponse.success(Collections.singletonList(createLocalTenant()));
+    }
+
+    @GetMapping("/tenant/getTenantUserType")
+    public AppResponse<Integer> getTenantUserType(
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "tenantId", required = false) String tenantId) {
+        return AppResponse.success(1);
+    }
+
+    @GetMapping("/tenant/expiration")
+    public AppResponse<TenantExpirationDto> getExpiration() {
+        TenantExpirationDto dto = new TenantExpirationDto();
+        dto.setTenantId("default");
+        dto.setIsExpired(false);
+        dto.setShouldAlert(false);
+        return AppResponse.success(dto);
     }
 }

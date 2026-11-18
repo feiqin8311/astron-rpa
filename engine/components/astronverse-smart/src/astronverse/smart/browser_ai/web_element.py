@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import re
 import time
+
 from astronverse.actionlib.types import PATH, WebPick
 from astronverse.baseline.logger.logger import logger
 from astronverse.browser import *
@@ -348,8 +350,8 @@ class WebElement:
         * @param delay_after, the delay time after the drag operation, please specify the value as 0.3, it is important to use this value.
         """
         # 尝试使用现有的Mouse API和smooth_move
-        from astronverse.locator import smooth_move, locator
         from astronverse.input.code.mouse import Mouse
+        from astronverse.locator import locator, smooth_move
 
         # 获取元素中心位置
         element = locator.locator(self.element_data.get("elementData"), cur_target_app=self.browser.browser_type.value)

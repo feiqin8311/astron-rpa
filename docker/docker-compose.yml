@@ -189,11 +189,18 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./logs/nginx:/usr/local/openresty/nginx/logs
     depends_on:
-      - robot-service
-      - ai-service
-      - openapi-service
-      - rpa-auth
-      - casdoor
+      robot-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+      openapi-service:
+        condition: service_started
+      rpa-auth:
+        condition: service_started
+        required: false
+      casdoor:
+        condition: service_started
+        required: false
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8090/health"]
       interval: 30s
@@ -246,6 +253,7 @@ services:
         condition: service_healthy
       casdoor:
         condition: service_started
+        required: false
     networks:
       - rpa-opensource-network
 
@@ -280,6 +288,7 @@ services:
         condition: service_healthy
       casdoor:
         condition: service_started
+        required: false
     networks:
       - rpa-opensource-network
 
@@ -306,6 +315,7 @@ services:
         condition: service_healthy
       casdoor:
         condition: service_started
+        required: false
     networks:
       - rpa-opensource-network
 
@@ -332,6 +342,7 @@ services:
         condition: service_healthy
       casdoor:
         condition: service_started
+        required: false
     networks:
       - rpa-opensource-network
 
@@ -356,6 +367,7 @@ services:
         condition: service_healthy
       casdoor:
         condition: service_started
+        required: false
     networks:
       - rpa-opensource-network
 

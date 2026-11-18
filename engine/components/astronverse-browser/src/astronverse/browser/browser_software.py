@@ -4,6 +4,7 @@ import sys
 import threading
 import time
 from ast import literal_eval
+
 import requests
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
@@ -15,9 +16,9 @@ if sys.platform == "darwin":
     from astronverse.browser.core.core_mac import BrowserCore
 else:
     from astronverse.browser.core.core_win import BrowserCore
+from astronverse.browser.core.launcher import BrowserLauncher
 from astronverse.browser.error import *
 from astronverse.software.software import Software
-from astronverse.browser.core.launcher import BrowserLauncher
 
 
 class BrowserSoftware:
@@ -194,7 +195,7 @@ class BrowserSoftware:
             elapsed = time.time() - start_time - timeout
 
             if wait_load_success:
-                result = BrowserSoftware.wait_web_load(browser_obj=res, timeout=(5 if elapsed < 5 else elapsed))
+                result = BrowserSoftware.wait_web_load(browser_obj=res, timeout=(max(elapsed, 5)))
                 if not result and timeout_handle_type == CommonForTimeoutHandleType.ExecError:
                     BrowserSoftware.stop_web_load(browser_obj=res)
         except Exception as e:

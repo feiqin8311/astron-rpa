@@ -2,13 +2,14 @@ import base64
 import os
 import sys
 import time
+
 from astronverse.actionlib import AtomicFormType, AtomicFormTypeMeta, AtomicLevel, DynamicsItem
 from astronverse.actionlib.atomic import atomicMg
 from astronverse.actionlib.types import PATH, WebPick
 from astronverse.baseline.logger.logger import logger
 from astronverse.browser import *
-from astronverse.browser.error import *
 from astronverse.browser.browser import Browser
+from astronverse.browser.error import *
 from astronverse.browser.utils.table_filter import (
     DataFilter,
     page_values_merge,

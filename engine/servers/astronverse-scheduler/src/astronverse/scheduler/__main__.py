@@ -1,5 +1,6 @@
-from astronverse.scheduler.logger import logger
 import argparse
+
+from astronverse.scheduler.logger import logger
 
 
 def main():

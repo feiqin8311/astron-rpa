@@ -1,3 +1,4 @@
+# ruff: noqa: B008, N803, TRY401
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 
 from app.dependencies import (

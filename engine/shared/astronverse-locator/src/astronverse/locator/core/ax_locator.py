@@ -141,7 +141,7 @@ class AXFactory:
         return True
 
     @classmethod
-    def __get_child_walk_ele__(cls, parent_element: Any) -> Generator[AXEle, None, None]:
+    def __get_child_walk_ele__(cls, parent_element: Any) -> Generator[AXEle]:
         children = ax_common.ax_children(parent_element)
         role_counters: dict[str, int] = {}
         for child in children:

@@ -24,8 +24,9 @@ local function authenticate_user()
         ngx_log(ngx_DEBUG, "Authorization header is present.")
         local _, _, token_type, token_value = string.find(authorization_header, "^(%S+)%s+(.+)$")
         if token_type and token_type:lower() == "bearer" then
-            -- session_token = token_value
-            return
+            session_token = token_value
+            cookie_type = "BEARER"
+            ngx_log(ngx_DEBUG, "Extracted Bearer token from Authorization header.")
         else
             ngx_log(ngx_DEBUG, "Authorization header is present but not Bearer type, type: " .. (token_type or "nil"))
         end
@@ -100,16 +101,18 @@ local function authenticate_user()
     -- 准备发送给 robot-service 的 Headers
     -- 使用Cookie方式传递SESSION或JSESSIONID给robot-service
     -- 根据获取到的 cookie 类型来决定发送哪个 cookie
-    local cookie_name_for_service = cookie_type or "JSESSIONID" -- 如果是从其他来源获取的，默认使用 JSESSIONID
     local headers_to_robot_service = {
         ["Content-Type"] = "application/json",
-        -- 示例：如果 robot-service 期望 Authorization 头
-        -- ["Authorization"] = "Bearer " .. session_token,
-        -- 根据 cookie 类型发送相应的 cookie
-        ["Cookie"] = cookie_name_for_service .. "=" .. session_token
     }
+    if authorization_header then
+        headers_to_robot_service["Authorization"] = authorization_header
+    end
+    if session_token and cookie_type ~= "BEARER" then
+        local cookie_name_for_service = cookie_type or "JSESSIONID"
+        headers_to_robot_service["Cookie"] = cookie_name_for_service .. "=" .. session_token
+    end
 
-    ngx_log(ngx_DEBUG, "Calling robot-service (" .. getUserUrl .. ") with credential cookie type: " .. cookie_name_for_service)
+    ngx_log(ngx_DEBUG, "Calling robot-service (" .. getUserUrl .. ") with auth header or cookie")
 
     local res, err = httpc:request_uri(getUserUrl, {
         method = "GET",

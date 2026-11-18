@@ -13,7 +13,9 @@ async def test_point_checker_billing_disabled():
     with patch("app.dependencies.points.get_settings") as mock_settings:
         mock_settings.return_value = Settings(ENABLE_BILLING=False)
 
-        checker = PointChecker(points_cost=100, transaction_type=PointTransactionType.AICHAT_COST)
+        checker = PointChecker(
+            points_cost=100, transaction_type=PointTransactionType.AICHAT_COST
+        )
         context = await checker(current_user_id="test-user", userpoints_service=None)
 
         assert isinstance(context, PointsContext)
@@ -36,8 +38,12 @@ async def test_point_checker_billing_enabled_sufficient():
         mock_service.get_cached_points = AsyncMock(return_value=500)
         mock_service.deduct_points = AsyncMock()
 
-        checker = PointChecker(points_cost=100, transaction_type=PointTransactionType.AICHAT_COST)
-        context = await checker(current_user_id="test-user", userpoints_service=mock_service)
+        checker = PointChecker(
+            points_cost=100, transaction_type=PointTransactionType.AICHAT_COST
+        )
+        context = await checker(
+            current_user_id="test-user", userpoints_service=mock_service
+        )
 
         assert context.billing_enabled is True
         mock_service.grant_monthly_points.assert_awaited_once_with("test-user")
@@ -45,7 +51,9 @@ async def test_point_checker_billing_enabled_sufficient():
 
         await context.deduct_points()
         mock_service.deduct_points.assert_awaited_once_with(
-            user_id="test-user", amount=100, transaction_type=PointTransactionType.AICHAT_COST
+            user_id="test-user",
+            amount=100,
+            transaction_type=PointTransactionType.AICHAT_COST,
         )
 
 

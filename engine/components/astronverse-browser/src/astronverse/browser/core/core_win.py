@@ -1,7 +1,8 @@
 import os
 import time
 from typing import Any
-from astronverse.browser import BROWSER_UIA_WINDOW_CLASS, BROWSER_REGISTER_NAME, BROWSER_UIA_POINT_CLASS
+
+from astronverse.browser import BROWSER_REGISTER_NAME, BROWSER_UIA_POINT_CLASS, BROWSER_UIA_WINDOW_CLASS
 from astronverse.browser.error import DOWNLOAD_WINDOW_NO_FIND, UPLOAD_WINDOW_NO_FIND
 
 
@@ -19,8 +20,8 @@ class BrowserCore:
     @staticmethod
     def browser_top_and_max(control):
         from astronverse.window import WindowSizeType
-        from astronverse.window.window import WindowsCore
         from astronverse.window.uitree import UITreeCore
+        from astronverse.window.window import WindowsCore
 
         handler = UITreeCore.toHandler(control)
         WindowsCore.top(handler)
@@ -40,8 +41,8 @@ class BrowserCore:
 
         tag_value, tag = cfg
 
-        from astronverse.window.uitree import UITreeCore
         from astronverse.window import WalkControlInfo
+        from astronverse.window.uitree import UITreeCore
 
         for walkControlInfo in UITreeCore.WalkControl(base_ctrl, True, 12):
             assert isinstance(walkControlInfo, WalkControlInfo)
@@ -65,8 +66,8 @@ class BrowserCore:
         if not cfg:
             return None
 
-        from astronverse.window.uitree import UITreeCore
         from astronverse.window import WalkControlInfo
+        from astronverse.window.uitree import UITreeCore
 
         class_name, patterns, match_type = cfg
         root_control = UITreeCore.GetRootControl()
@@ -88,9 +89,9 @@ class BrowserCore:
     def download_window_operate(**kwargs) -> Any:
         """获取浏览器下载文件另存为窗口"""
 
+        import pyautogui
         import pyperclip
         import win32con
-        import pyautogui
         import win32gui
 
         file_name = kwargs.get("file_name")

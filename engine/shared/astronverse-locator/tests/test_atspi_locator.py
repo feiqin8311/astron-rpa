@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 from astronverse.locator import Rect
 from astronverse.locator.core.atspi_locator import ATSPIFactory, ATSPILocator, atspi_factory

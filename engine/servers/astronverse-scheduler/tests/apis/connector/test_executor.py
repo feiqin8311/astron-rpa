@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-
 from astronverse.scheduler.apis.connector import executor as executor_module
 from astronverse.scheduler.apis.connector.executor import RobotInfo, TaskInfo, executor_run_list
 from astronverse.scheduler.core.executor.executor import ExecuteStatus, TaskExecuteStatus

@@ -1,4 +1,5 @@
 import re
+
 from astronverse.baseline.error.error import BaseException, BizCode, ErrorCode
 from astronverse.baseline.i18n.i18n import _
 from astronverse.executor.logger import logger
@@ -138,10 +139,10 @@ def python_base_error(e):
                 error_str = translation.format(*match.groups())
         return error_str
     elif isinstance(e, SyntaxError):
-        error_str = f"语法错误, 检查后重试"
+        error_str = "语法错误, 检查后重试"
         return error_str
     elif isinstance(e, RecursionError):
-        error_str = f"递归深度超限, 检查流程否循环引用"
+        error_str = "递归深度超限, 检查流程否循环引用"
         return error_str
     elif isinstance(e, BaseException):
         error_str = e.code.message

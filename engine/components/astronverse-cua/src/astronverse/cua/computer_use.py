@@ -4,7 +4,6 @@ Computer Use Agent - 使用视觉大模型操作电脑
 """
 
 import base64
-import json
 import tempfile
 import time
 from datetime import datetime

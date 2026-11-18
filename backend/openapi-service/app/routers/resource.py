@@ -1,5 +1,6 @@
 # ruff: noqa: B008
-import uuid
+import secrets
+import time
 from datetime import UTC, datetime
 from urllib.parse import quote
 
@@ -17,6 +18,34 @@ ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".webm", ".ogg", ".avi", ".mov", ".mpeg"}
 MAX_NORMAL_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 MAX_SHARE_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
 CHUNK_SIZE = 1024 * 1024  # 1 MB
+
+# Snowflake 纪元时间戳: 2024-01-01 00:00:00 UTC = 1704067200000 ms
+EPOCH_MS = 1704067200000
+_last_timestamp = -1
+_sequence = 0
+
+
+def generate_file_id() -> str:
+    """生成与 MySQL BIGINT 及 Snowflake 算法兼容的 63 位纯正整数 ID 字符串。
+
+    兼容 shared_file.file_id (BIGINT(20)) 与 file.file_id (VARCHAR(50))，
+    避免十六进制 UUID 写入 BIGINT 字段时发生数值转换异常。
+    """
+    global _last_timestamp, _sequence
+    now_ms = int(time.time() * 1000)
+    if now_ms == _last_timestamp:
+        _sequence = (_sequence + 1) & 0xFFF
+        if _sequence == 0:
+            time.sleep(0.001)
+            now_ms = int(time.time() * 1000)
+    else:
+        _sequence = secrets.randbelow(32)
+    _last_timestamp = now_ms
+
+    time_part = max(0, now_ms - EPOCH_MS) & 0x1FFFFFFFFFF
+    worker_part = secrets.randbelow(0x400)
+    val = (time_part << 22) | (worker_part << 12) | (_sequence & 0xFFF)
+    return str(val)
 
 
 def _get_file_extension(filename: str) -> str:
@@ -69,10 +98,12 @@ async def _save_uploaded_file(
     if not content:
         return {"code": "900001", "message": "文件不能为空", "data": None}
 
-    file_id = str(uuid.uuid4()).replace("-", "")
+    file_id = generate_file_id()
+    ext = _get_file_extension(filename)
     now_utc = datetime.now(UTC)
     date_prefix = now_utc.strftime("%Y-%m-%d")
-    relative_path = f"rpa/{date_prefix}/{file_id}_{filename}"
+    # 路径规范：rpa/YYYY-MM-DD/{fileId}{ext}，不包含原始文件名，严格保证长度在 file.path VARCHAR(100) 以内
+    relative_path = f"rpa/{date_prefix}/{file_id}{ext}"
 
     storage = get_storage()
     await storage.save(relative_path, content, content_type=file.content_type or "")

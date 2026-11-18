@@ -88,9 +88,7 @@ def _patch_ax(monkeypatch, windows_by_pid: dict[int, list[FakeAX]], apps: Option
             return list(windows_by_pid.keys())
         keys = []
         for pid, meta in apps.items():
-            if bundle_id and meta.get("bundle_id", "").lower() == bundle_id.lower():
-                keys.append(pid)
-            elif app_name and meta.get("name", "").lower() == app_name.lower():
+            if bundle_id and meta.get("bundle_id", "").lower() == bundle_id.lower() or app_name and meta.get("name", "").lower() == app_name.lower():
                 keys.append(pid)
         return keys
 

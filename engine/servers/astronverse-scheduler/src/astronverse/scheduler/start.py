@@ -1,9 +1,8 @@
-import argparse
 import time
 import traceback
 from pathlib import Path
+
 import uvicorn
-from astronverse.scheduler.logger import logger
 from astronverse.baseline.config.config import load_config
 from astronverse.scheduler.apis import route
 from astronverse.scheduler.config import Config
@@ -25,6 +24,7 @@ from astronverse.scheduler.core.servers.core_server import (
 )
 from astronverse.scheduler.core.setup.setup import Process
 from astronverse.scheduler.core.svc import get_svc
+from astronverse.scheduler.logger import logger
 from astronverse.scheduler.utils.utils import check_port
 from fastapi import FastAPI
 

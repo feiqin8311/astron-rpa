@@ -158,7 +158,7 @@ class EmailImap4Receive:
         若 selector 包含非 ASCII 字符（如中文），自动编码为 IMAP 修改版 UTF-7。
         """
         status, folder_data = self.showFolders()
-        logger.info(f"available folders:\n" + "\n".join(decode_folder_list(folder_data)))
+        logger.info("available folders:\n" + "\n".join(decode_folder_list(folder_data)))
         if isinstance(selector, str):
             encoded_selector = encode_imap_utf7(selector)
             logger.info(f"selecting folder: {selector!r} -> encoded: {encoded_selector}")

@@ -3,10 +3,10 @@ import inspect
 import os
 from enum import Enum
 from typing import Optional
+
 import keyring
 from astronverse.actionlib.error import *
 from astronverse.actionlib.logger import logger
-
 
 # 凭据服务名称，用于 keyring 存储
 SERVICE_NAME = "AstronRPA"

@@ -44,6 +44,15 @@ async def test_upload_and_download_file(mock_storage):
             assert data["code"] == "000000"
             file_id = data["data"]
             assert file_id in saved_records
+            # 校验契约：纯数字且在 BIGINT 范围内，路径在 VARCHAR(100) 以内且不包含文件名
+            assert file_id.isdigit()
+            assert 0 < int(file_id) < 2**63 - 1
+            saved_record = saved_records[file_id]
+            assert saved_record.path.startswith("rpa/")
+            assert saved_record.path.endswith(f"{file_id}.txt")
+            assert "test_doc.txt" not in saved_record.path
+            assert len(saved_record.path) <= 100
+            assert saved_record.file_name == "test_doc.txt"
 
             mock_result = MagicMock()
             mock_result.scalars.return_value.first.return_value = saved_records[file_id]
@@ -107,7 +116,10 @@ async def test_share_file_types(mock_storage):
                 "/file/share-file-upload",
                 files={"file": ("guide.docx", io.BytesIO(b"word"), "application/vnd.openxmlformats")},
             )
-            assert resp.json()["data"]["type"] == 2
+            data = resp.json()["data"]
+            assert data["type"] == 2
+            assert data["fileId"].isdigit()
+            assert 0 < int(data["fileId"]) < 2**63 - 1
 
             # PDF (.pdf) -> type 3
             resp = await client.post(
