@@ -29,14 +29,17 @@ def get_logger(name=None, log_level=LOG_LEVEL):
     logger.addHandler(console_handler)
 
     log_dir = get_settings().LOG_DIR
-    os.makedirs(log_dir, exist_ok=True)
-    file_handler = RotatingFileHandler(
-        os.path.join(log_dir, "app.log"),
-        maxBytes=10 * 1024 * 1024,  # 10 MB
-        backupCount=10,
-    )
-    file_handler.setFormatter(formatter)
-    file_handler.addFilter(filter)
-    logger.addHandler(file_handler)
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            os.path.join(log_dir, "app.log"),
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=10,
+        )
+        file_handler.setFormatter(formatter)
+        file_handler.addFilter(filter)
+        logger.addHandler(file_handler)
+    except (OSError, PermissionError) as e:
+        logger.warning(f"Could not initialize file handler at {log_dir}: {e}")
 
     return logger

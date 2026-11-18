@@ -204,20 +204,8 @@ public class SampleUsersServiceImpl extends ServiceImpl<SampleUsersDao, SampleUs
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
 
         // 发起 POST 请求
-        try {
-            String workflowsUpsertUrl = openApiProperties.getWorkflowsUpsertUrl();
-            ResponseEntity<String> response =
-                    restTemplate.exchange(workflowsUpsertUrl, HttpMethod.POST, requestEntity, String.class);
-
-            log.info(
-                    "OpenAPI 请求成功，URL: {}, 响应状态: {}, 响应体: {}",
-                    workflowsUpsertUrl,
-                    response.getStatusCode(),
-                    response.getBody());
-        } catch (Exception e) {
-            log.error("OpenAPI 请求失败，URL: {}, 错误信息: {}", openApiProperties.getWorkflowsUpsertUrl(), e.getMessage(), e);
-            throw e;
-        }
+        String workflowsUpsertUrl = openApiProperties.getWorkflowsUpsertUrl();
+        executeWithRetry(restTemplate, workflowsUpsertUrl, requestEntity);
     }
 
     public void addUserSamples(List<SampleTemplates> latestActiveTemplates, String userId, String tenantId) {
@@ -444,20 +432,49 @@ public class SampleUsersServiceImpl extends ServiceImpl<SampleUsersDao, SampleUs
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
 
         // 发起 POST 请求
-        try {
-            String workflowsUpsertUrl = openApiProperties.getWorkflowsUpsertUrl();
-            ResponseEntity<String> response =
-                    restTemplate.exchange(workflowsUpsertUrl, HttpMethod.POST, requestEntity, String.class);
+        String workflowsUpsertUrl = openApiProperties.getWorkflowsUpsertUrl();
+        executeWithRetry(restTemplate, workflowsUpsertUrl, requestEntity);
+    }
 
-            log.info(
-                    "OpenAPI 请求成功，URL: {}, 响应状态: {}, 响应体: {}",
-                    workflowsUpsertUrl,
-                    response.getStatusCode(),
-                    response.getBody());
-        } catch (Exception e) {
-            log.error("OpenAPI 请求失败，URL: {}, 错误信息: {}", openApiProperties.getWorkflowsUpsertUrl(), e.getMessage(), e);
-            throw e;
+    void executeWithRetry(RestTemplate restTemplate, String url, HttpEntity<String> requestEntity) {
+        int maxRetries = 3;
+        long retryDelayMs = 200;
+        RuntimeException lastException = null;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                ResponseEntity<String> response =
+                        restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
+                log.info(
+                        "OpenAPI 请求成功，URL: {}, 响应状态: {}, 响应体: {}",
+                        url,
+                        response.getStatusCode(),
+                        response.getBody());
+                return;
+            } catch (Exception e) {
+                log.warn(
+                        "OpenAPI 请求失败 (重试 {}/{})，URL: {}, 错误信息: {}",
+                        attempt,
+                        maxRetries,
+                        url,
+                        e.getMessage());
+                if (e instanceof RuntimeException) {
+                    lastException = (RuntimeException) e;
+                } else {
+                    lastException = new RuntimeException(e);
+                }
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(retryDelayMs * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
+        log.error("OpenAPI 投影最终同步失败，URL: {}, 错误信息: {}", url, lastException.getMessage(), lastException);
+        throw lastException;
     }
 
     RestTemplate createRestTemplate() {

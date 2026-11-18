@@ -69,12 +69,6 @@ class Agent:
         file_path: PATH = "",
         file_type: DifyFileTypes = DifyFileTypes.DOCUMENT,
     ):
-        # 使用示例
-
-        # file_path = r"C:\Users\zyzhou23.IFLYTEK\Downloads\写出好的代码 -经验篇.md"
-        # user = "drbruce"
-        # dify = Dify("app-MgbOPD6ZYA6mSyip1w4h74wU")
-
         dify = Dify(app_token, app_url)
         file_id = None
         # 上传文件
@@ -145,12 +139,6 @@ class Agent:
         file_path: PATH = "",
         file_type: DifyFileTypes = DifyFileTypes.DOCUMENT,
     ):
-        # 使用示例
-
-        # file_path = r"C:\Users\zyzhou23.IFLYTEK\Downloads\写出好的代码 -经验篇.md"
-        # user = "drbruce"
-        # dify = Dify("app-MgbOPD6ZYA6mSyip1w4h74wU")
-
         dify = Dify(app_token, app_url)
         file_id = None
         # 上传文件

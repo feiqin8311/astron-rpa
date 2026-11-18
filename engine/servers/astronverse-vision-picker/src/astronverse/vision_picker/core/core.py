@@ -1,15 +1,18 @@
 import base64
+import hashlib
 import io
 import json
 import os
 import sys
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import cv2
 import numpy as np
 import pyautogui
 import requests
 from astronverse.vision_picker.core.cv_match import AnchorMatch
+from astronverse.vision_picker.logger import logger
 from PIL import Image
 
 current_directory = os.getcwd()
@@ -116,20 +119,84 @@ class IPickCore(ABC):
             image = Image.open(io.BytesIO(image_data))
             return image
         except Exception as e:
-            print(f"Error converting base64 to image: {e}")
+            logger.warning(f"Error converting base64 to image: {e}")
             return None
 
     @staticmethod
-    def get_url(input_url, remote_addr):
-        print("请求开始 {}{}".format(remote_addr, input_url))
+    def get_asset_cache_dir() -> Path:
+        cache_dir = Path.home() / ".astronverse" / "cache" / "assets"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    @classmethod
+    def get_url(cls, input_url: str, remote_addr: str) -> str:
+        """Fetch remote resource with local cache-first strategy.
+        Returns base64 encoded string.
+        """
+        if not input_url:
+            return ""
+
+        # Normalize URL
+        if input_url.startswith("http://") or input_url.startswith("https://"):
+            full_url = input_url
+        else:
+            base = (remote_addr or "").rstrip("/")
+            path = input_url.lstrip("/")
+            full_url = f"{base}/{path}"
+
+        # Hash URL for local cache key
+        cache_key = hashlib.sha256(full_url.encode("utf-8")).hexdigest()
+        cache_file = cls.get_asset_cache_dir() / f"{cache_key}.bin"
+
+        # Check local cache first
+        if cache_file.exists() and cache_file.stat().st_size > 0:
+            try:
+                content = cache_file.read_bytes()
+                return base64.b64encode(content).decode("utf-8")
+            except Exception as e:
+                logger.warning(f"读取本地资源缓存失败 ({cache_file}): {e}")
+
+        # Fetch from remote server
+        logger.info(f"请求开始 {full_url}")
         try:
-            response = requests.get(f"{remote_addr}{input_url}")
+            response = requests.get(full_url, timeout=15)
             response.raise_for_status()  # 自动抛出HTTP错误
         except requests.exceptions.RequestException as e:
             raise Exception(f"服务器错误: {e}")
-        print(response.content)
-        base64_encoded_data = base64.b64encode(response.content).decode("utf-8")
+
+        content = response.content
+        # Save to local cache
+        try:
+            cache_file.write_bytes(content)
+        except Exception as e:
+            logger.warning(f"写入本地资源缓存失败 ({cache_file}): {e}")
+
+        base64_encoded_data = base64.b64encode(content).decode("utf-8")
         return base64_encoded_data
+
+    @classmethod
+    def resolve_image(cls, img_ref: str, remote_addr: str) -> str:
+        """Resolve an image reference (local file, remote API url, or raw base64) to base64."""
+        if not img_ref:
+            return ""
+
+        # 1. Local file path check
+        if os.path.isfile(img_ref):
+            try:
+                return base64.b64encode(Path(img_ref).read_bytes()).decode("utf-8")
+            except Exception as e:
+                logger.warning(f"读取本地图像文件失败 ({img_ref}): {e}")
+
+        # 2. Remote URL check (/api/... or http://...)
+        if img_ref.startswith("/api") or img_ref.startswith("http://") or img_ref.startswith("https://"):
+            return cls.get_url(img_ref, remote_addr)
+
+        # 3. Already a base64 string or data-uri
+        if img_ref.startswith("data:image"):
+            comma_idx = img_ref.find(",")
+            if comma_idx != -1:
+                return img_ref[comma_idx + 1 :]
+        return img_ref
 
     @staticmethod
     def match_imgs(data, remote_addr, canny_flag=False):
@@ -139,17 +206,15 @@ class IPickCore(ABC):
         anchor = data["img"]["parent"]
         match_similarity = data.get("similarity", 0.60)
 
-        if target.startswith("/api"):
-            target = IPickCore.get_url(target, remote_addr)
-            print("获取到目标url的base64为：{}".format(target))
+        target = IPickCore.resolve_image(target, remote_addr)
+        logger.debug("获取到目标图像base64（长度：{}）".format(len(target) if target else 0))
 
         target_img = IPickCore.base64_to_image(target)
         center_coords_aim = f"{data['pos']['self_x']},{data['pos']['self_y']}"
 
         if anchor:
-            if target.startswith("/api"):
-                anchor = IPickCore.get_url(anchor, remote_addr)
-                print("获取到锚点url的base64为：{}".format(anchor))
+            anchor = IPickCore.resolve_image(anchor, remote_addr)
+            logger.debug("获取到锚点图像base64（长度：{}）".format(len(anchor) if anchor else 0))
             anchor_img = IPickCore.base64_to_image(anchor)
             center_coords_anchor = f"{data['pos']['parent_x']},{data['pos']['parent_y']}"
         else:
@@ -176,7 +241,6 @@ class IPickCore(ABC):
                 ratio=ratio,
                 match_similarity=match_similarity,
             )
-        except cv2.error as e:
+        except cv2.error:
             match_box = None
-        finally:
-            return match_box
+        return match_box
