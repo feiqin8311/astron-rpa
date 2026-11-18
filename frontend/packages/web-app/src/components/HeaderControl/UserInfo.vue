@@ -22,22 +22,13 @@ const { appInfo } = storeToRefs(appStore)
 
 const menuData = computed(() => {
   return [
-    // {
-    //   key: 'userRight',
-    //   icon: 'rights',
-    //   label: t('userInfo.userRight'),
-    // },
     {
       key: 'changeMode',
       icon: 'rights',
       label: t('changeMode'),
       hidden: () => userStore.currentTenant?.tenantType === 'personal',
     },
-    {
-      key: 'logout',
-      icon: 'logout',
-      label: t('logout'),
-    },
+    // 单人模式：隐藏退出登录选项
   ].filter(item => !item.hidden || !item.hidden())
 })
 
@@ -95,7 +86,7 @@ async function menuClick(item: any) {
 async function logout() {
   await userStore.logout()
   taskNotify({ event: 'exit' }) // 不阻塞
-  location.replace(`/boot.html`)
+  // 单人模式：无需重定向至 boot.html
 }
 
 function modalTip() {
@@ -129,8 +120,9 @@ function modalTip() {
             <span class="text-[rgba(0,0,0,0.65)] dark:text-[rgba(255,255,255,0.65)]">{{ userStore.currentUserInfo?.name || userStore.currentUserInfo?.loginName }}</span>
           </div>
         </div>
+        <!-- 单人模式隐藏咨询/升级入口 -->
         <Auth.Consult
-          v-if="userStore.currentTenant?.tenantType !== 'enterprise'"
+          v-if="false"
           :auth-type="appInfo.appAuthType"
           trigger="button"
           :button-conf="{ buttonType: 'tag', currentEdition: userStore.currentTenant?.tenantType, expirationDate: userStore.currentTenant?.expirationDate, shouldAlert: userStore.currentTenant?.shouldAlert }"

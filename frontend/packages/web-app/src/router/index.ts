@@ -276,8 +276,8 @@ router.beforeEach(async (to, _from, next) => {
     if (first)
       return next(first)
 
-    window.location.href = '/boot.html?code=403' // 无权限访问，跳转到登录页
-    return
+    // 单人模式：直接放行所有功能，不重定向至登录页
+    return next()
   }
   next()
 })

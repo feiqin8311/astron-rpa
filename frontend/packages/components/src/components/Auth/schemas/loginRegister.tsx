@@ -28,12 +28,7 @@ export function accountLoginFormConfig(isInvite = false, edition = 'saas', authT
             <Button type="primary" size="large" block onClick={() => handleEvents && handleEvents('submit')} loading={loading}>
               { loading ? i18next.t('authForm.loggingIn') : (isInvite ? i18next.t('authForm.loginAndJoin') : i18next.t('authForm.login')) }
             </Button>
-            <div class="text-center text-[14px] mt-[12px] text-[#000000D9] dark:text-[#FFFFFFD9]">
-              {i18next.t('authForm.noAccount')}
-              <Button type="link" class="!m-0 !p-0 !border-0 h-auto" onClick={() => handleEvents && handleEvents('switchToRegister')}>
-                {i18next.t('authForm.register')}
-              </Button>
-            </div>
+            {/* 单人模式：隐藏注册入口 */}
           </div>
         ),
       }
@@ -95,12 +90,7 @@ export function accountLoginFormConfig(isInvite = false, edition = 'saas', authT
             <Button type="primary" size="large" block onClick={() => handleEvents && handleEvents('submit')} loading={loading}>
               { loading ? i18next.t('authForm.loggingIn') : (isInvite ? i18next.t('authForm.loginAndJoin') : i18next.t('authForm.login')) }
             </Button>
-            <div class="text-center text-[14px] mt-[12px] text-[#000000D9] dark:text-[#FFFFFFD9]">
-              {i18next.t('authForm.noCasdoorAccount')}
-              <Button type="link" class="!m-0 !p-0 h-auto" onClick={() => handleEvents && handleEvents('switchToRegister')}>
-                {i18next.t('authForm.register')}
-              </Button>
-            </div>
+            {/* 单人模式：隐藏注册入口 */}
           </div>
         ),
       }

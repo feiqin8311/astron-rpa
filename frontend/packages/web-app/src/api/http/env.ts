@@ -1,5 +1,3 @@
-import { message } from 'ant-design-vue'
-
 import { isBase64Image } from '@/utils/common'
 import { storage } from '@/utils/storage'
 
@@ -29,11 +27,9 @@ export function getImageURL(str: string): string {
  * 登录失效
  */
 export function unauthorize(response) {
-  if (response.config.toast === false) {
-    message.error(response.data.message || response.data.msg || '登录失效，请重新登录')
+  if (response.config?.toast !== false) {
+    console.warn('单人模式：忽略登录失效并跳过重定向到登录页', response?.data)
   }
-  const code = response.data.code || response.data.ret
-  location.href = `/boot.html?code=${code}`
 }
 
 let isUnauthorized = null

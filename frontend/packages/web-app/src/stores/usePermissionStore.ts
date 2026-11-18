@@ -2,14 +2,22 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { permission } from '@/api/permission' // 换成你的请求实例
+import { ACTUATOR, APPLICATIONMARKET, DESIGNER } from '@/constants/menu'
 
 export interface PermItem {
   resource: string
   actions: string[]
 }
 
+const DEFAULT_PERMISSIONS: PermItem[] = [
+  { resource: DESIGNER, actions: ['all'] },
+  { resource: ACTUATOR, actions: ['all'] },
+  { resource: 'console', actions: ['all'] },
+  { resource: APPLICATIONMARKET, actions: ['all'] },
+]
+
 export const usePermissionStore = defineStore('permission', () => {
-  const permissionAction = ref<PermItem[]>([])
+  const permissionAction = ref<PermItem[]>(DEFAULT_PERMISSIONS)
   const fetched = ref(false)
 
   const initPermission = async () => {
@@ -17,11 +25,18 @@ export const usePermissionStore = defineStore('permission', () => {
       return
     try {
       const data = await permission()
-      setPermission(data)
+      if (data && data.length > 0) {
+        setPermission(data)
+      }
+      else {
+        setPermission(DEFAULT_PERMISSIONS)
+      }
       fetched.value = true
     }
     catch (e) {
-      console.error('[Permission] fetch failed', e)
+      console.warn('[Permission] fetch failed, fallback to all permissions', e)
+      setPermission(DEFAULT_PERMISSIONS)
+      fetched.value = true
     }
   }
 
@@ -29,14 +44,13 @@ export const usePermissionStore = defineStore('permission', () => {
     permissionAction.value = value
   }
 
-  const can = (resource: string, action = 'all'): boolean => {
-    return permissionAction.value.some(
-      p => p.resource === resource && p.actions?.includes(action),
-    )
+  const can = (_resource: string, _action = 'all'): boolean => {
+    // 单人模式：默认拥有全部权限
+    return true
   }
 
   const reset = () => {
-    permissionAction.value = []
+    permissionAction.value = DEFAULT_PERMISSIONS
     fetched.value = false
   }
 
