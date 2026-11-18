@@ -189,7 +189,6 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./logs/nginx:/usr/local/openresty/nginx/logs
     depends_on:
-      - resource-service
       - robot-service
       - ai-service
       - openapi-service
@@ -277,7 +276,9 @@ services:
     networks:
       - rpa-opensource-network
 
+  # Consolidated into openapi-service via StoragePort; kept under optional legacy profile
   resource-service:
+    profiles: ["legacy"]
     image: ghcr.io/iflytek/astron-rpa/resource-service:latest
     # build:
     #  context: ..

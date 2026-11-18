@@ -35,6 +35,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class SessionValidationFilter extends OncePerRequestFilter {
 
     /**
+     * 是否启用认证校验，单机模式或离线模式下设为 false
+     */
+    @Value("${auth.enabled:true}")
+    private boolean authEnabled;
+
+    /**
      * 认证服务基础地址
      */
     @Value("${auth.base-url:http://localhost:10251}")
@@ -92,6 +98,9 @@ public class SessionValidationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        if (!authEnabled) {
+            return true;
+        }
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
@@ -99,6 +108,12 @@ public class SessionValidationFilter extends OncePerRequestFilter {
 
         // astron-agent接口使用API Key认证，不需要session校验
         if (uri.contains("/astron-agent")) {
+            return true;
+        }
+
+        // 支持 Bearer JWT 或本地免密认证，直接放行
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (StringUtils.isNotBlank(authHeader) && authHeader.startsWith("Bearer ")) {
             return true;
         }
 
@@ -123,7 +138,11 @@ public class SessionValidationFilter extends OncePerRequestFilter {
         try {
             authResponse = restTemplate.exchange(checkSessionUrl, HttpMethod.GET, entity, byte[].class);
         } catch (Exception ex) {
-            log.error("调用认证服务校验 session 失败", ex);
+            log.warn("调用认证服务校验 session 失败: {}", ex.getMessage());
+            if (!authEnabled) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "session check failed");
             return;
         }

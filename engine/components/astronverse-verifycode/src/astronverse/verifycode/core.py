@@ -25,9 +25,10 @@ class VerifyCodeCore:
         headers = {
             "Content-Type": "application/json",
         }
-        response = requests.post(VerifyCodeConfig.url, headers=headers, json=data).json()
-        result = response["data"]["data"]
-        return result
+        response = requests.post(VerifyCodeConfig.url, headers=headers, json=data, timeout=30).json()
+        if isinstance(response, dict) and "data" in response and isinstance(response["data"], dict):
+            return response["data"].get("data")
+        return response.get("data") if isinstance(response, dict) else response
 
     @staticmethod
     def get_base64_screenshot(left, top, width, height):

@@ -132,8 +132,9 @@ uap:
     name: uap_db
 
 auth:
-  base-url: http://rpa-opensource-rpa-auth:10251
-  check-session-path: /api/rpa-auth/check-session
+  enabled: ${AUTH_ENABLED:true}
+  base-url: ${AUTH_BASE_URL:http://rpa-opensource-rpa-auth:10251}
+  check-session-path: ${AUTH_CHECK_SESSION_PATH:/api/rpa-auth/check-session}
 
 # 团队市场相关配置
 market:

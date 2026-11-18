@@ -611,43 +611,52 @@ public class RobotDesignServiceImpl extends ServiceImpl<RobotDesignDao, RobotDes
      * @param userId   用户ID
      */
     private void sendDeleteRequestToOpenApi(String robotId, String userId) {
-        try {
-            log.info("删除机器人时请求openapi，robotId: {}", robotId);
+        log.info("删除机器人时请求openapi，robotId: {}", robotId);
 
-            // 构建请求体
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("project_id", robotId);
-            requestBody.put("status", 0);
+        // 构建请求体
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("project_id", robotId);
+        requestBody.put("status", 0);
 
-            String requestBodyStr = requestBody.toJSONString();
-            log.info("请求openapi参数: {}", requestBodyStr);
+        String requestBodyStr = requestBody.toJSONString();
+        log.info("请求openapi参数: {}", requestBodyStr);
 
-            // 创建 RestTemplate 实例
-            RestTemplate restTemplate = createRestTemplate();
+        RestTemplate restTemplate = createRestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("user_id", userId);
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestBodyStr, headers);
 
-            // 设置请求头
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.add("user_id", userId);
+        String openApiUrl = openApiProperties.getWorkflowsUpsertUrl();
 
-            // 创建请求实体
-            HttpEntity<String> requestEntity = new HttpEntity<>(requestBodyStr, headers);
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                ResponseEntity<String> response =
+                        restTemplate.exchange(openApiUrl, HttpMethod.POST, requestEntity, String.class);
 
-            // openapi URL
-            String openApiUrl = openApiProperties.getWorkflowsUpsertUrl();
-
-            // 发起 POST 请求
-            ResponseEntity<String> response =
-                    restTemplate.exchange(openApiUrl, HttpMethod.POST, requestEntity, String.class);
-
-            log.info(
-                    "OpenAPI 请求成功，URL: {}, 响应状态: {}, 响应体: {}",
-                    openApiUrl,
-                    response.getStatusCode(),
-                    response.getBody());
-        } catch (Exception e) {
-            log.error("OpenAPI 请求失败，robotId: {}, 错误信息: {}", robotId, e.getMessage(), e);
-            // 不抛出异常，避免影响删除操作
+                log.info(
+                        "OpenAPI 请求成功，URL: {}, 响应状态: {}, 响应体: {}",
+                        openApiUrl,
+                        response.getStatusCode(),
+                        response.getBody());
+                return;
+            } catch (Exception e) {
+                log.warn(
+                        "OpenAPI 请求失败 (attempt {}/{})，robotId: {}, 错误: {}",
+                        attempt,
+                        maxRetries,
+                        robotId,
+                        e.getMessage());
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep((long) Math.pow(2, attempt - 1) * 500);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
     }
 
