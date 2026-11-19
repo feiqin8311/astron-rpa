@@ -79,4 +79,10 @@ temporary_config="$NGINX_CONFIG_ROOT/conf.d/default.conf.tmp"
 render_template "$template" "$temporary_config"
 mv "$temporary_config" "$NGINX_CONFIG_ROOT/conf.d/default.conf"
 
+# Preserve AUTH_ENABLED in the main nginx configuration so OpenResty Lua can read it via os.getenv
+MAIN_CONF="/usr/local/openresty/nginx/conf/nginx.conf"
+if [ -f "$MAIN_CONF" ] && ! grep -q "env AUTH_ENABLED;" "$MAIN_CONF"; then
+    sed -i '1i env AUTH_ENABLED;' "$MAIN_CONF"
+fi
+
 exec "$@"

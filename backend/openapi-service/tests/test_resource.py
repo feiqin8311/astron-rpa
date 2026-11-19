@@ -126,7 +126,10 @@ async def test_share_file_types(mock_storage):
                 "/file/share-file-upload",
                 files={"file": ("manual.pdf", io.BytesIO(b"pdf"), "application/pdf")},
             )
-            assert resp.json()["data"]["type"] == 3
+            data = resp.json()["data"]
+            assert data["type"] == 3
+            assert data["fileName"] == "manual.pdf"
+            assert data["filename"] == "manual.pdf"
 
             # Text (.txt) -> type 1
             resp = await client.post(
@@ -227,3 +230,58 @@ async def test_download_file_not_found(mock_storage):
             assert data["code"] == "900003"
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_download_file_aliases_and_disposition(mock_storage):
+    mock_db = AsyncMock()
+    file_content = b"\x89PNG\r\n\x1a\nfake png data"
+    file_path = "rpa/2026-03-31/123456.png"
+    await mock_storage.save(file_path, file_content)
+
+    fake_file = MagicMock()
+    fake_file.file_id = "123456"
+    fake_file.file_name = "test_image.png"
+    fake_file.path = file_path
+    fake_file.deleted = 0
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = fake_file
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    async def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Test snake_case alias file_id
+            resp = await client.get("/file/download?file_id=123456")
+            assert resp.status_code == 200
+            assert resp.content == file_content
+            assert resp.headers["content-type"].startswith("image/png")
+            assert "attachment" in resp.headers["content-disposition"]
+
+            # 2. Test disposition=inline
+            resp_inline = await client.get("/file/download?fileId=123456&disposition=inline")
+            assert resp_inline.status_code == 200
+            assert resp_inline.content == file_content
+            assert "inline" in resp_inline.headers["content-disposition"]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.mark.asyncio
+async def test_storage_path_traversal_guard(tmp_path):
+    driver = LocalStorageDriver(base_dir=str(tmp_path))
+
+    # Path traversal attempt
+    with pytest.raises(ValueError, match="Path traversal"):
+        await driver.save("../../../etc/passwd", b"bad data")
+
+    with pytest.raises(ValueError, match="Path traversal"):
+        await driver.read("..\\..\\secret.txt")
+
+    assert not await driver.exists("../outside.txt")

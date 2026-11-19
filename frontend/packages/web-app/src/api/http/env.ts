@@ -22,7 +22,12 @@ export function getAPIBaseURL(): string {
 }
 
 export function getImageURL(str: string): string {
-  return isBase64Image(str) ? str : `${getBaseURL()}${str}`
+  if (!str)
+    return ''
+  if (isBase64Image(str))
+    return str
+  const path = str.startsWith('/') ? str : `/${str}`
+  return `${getBaseURL()}${path}`
 }
 
 /**

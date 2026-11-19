@@ -15,6 +15,15 @@ local function authenticate_user()
     local ctx_type = ngx.var.context_type or "HTTP"
     ngx_log(ngx_DEBUG, "Starting authentication for " .. ctx_type .. " request. URI: " .. ngx.var.uri)
 
+    -- 0. 如果显式配置了单机/免认证模式 (AUTH_ENABLED=false)，直接放行并注入本地管理员身份
+    local auth_enabled = os.getenv("AUTH_ENABLED")
+    if auth_enabled and auth_enabled:lower() == "false" then
+        ngx_log(ngx_DEBUG, "AUTH_ENABLED is false, granting local-user identity in standalone mode.")
+        ngx.req.set_header("user_id", "local-user")
+        ngx.req.set_header("user-info", json.encode({id = "local-user", name = "本地用户"}))
+        return true
+    end
+
     local session_token = nil
     local cookie_type = nil -- 记录从哪个 cookie 获取的 token (SESSION 或 JSESSIONID)
 
@@ -85,14 +94,11 @@ local function authenticate_user()
         end
     end
 
-    if not session_token or session_token == "" or session_token == " " then
-        ngx_log(ngx_ERR, "Missing SESSION/Token in " .. ctx_type .. " request after trying all sources.")
-        ngx.status = ngx_HTTP_UNAUTHORIZED
-        ngx.say(json.encode({code = "4001", msg = "Missing SESSION/Token in request"}))
-        return ngx.exit(ngx_HTTP_UNAUTHORIZED)
+    if session_token and session_token ~= "" and session_token ~= " " then
+        ngx_log(ngx_DEBUG, "Successfully extracted an authentication credential.")
+    else
+        ngx_log(ngx_DEBUG, "No explicit credential found, querying robot-service to verify session or standalone mode.")
     end
-
-    ngx_log(ngx_DEBUG, "Successfully extracted an authentication credential.")
 
     -- 调用 robot-service 进行认证
     local getUserUrl = "http://robot-service:8040/api/robot/user/info"

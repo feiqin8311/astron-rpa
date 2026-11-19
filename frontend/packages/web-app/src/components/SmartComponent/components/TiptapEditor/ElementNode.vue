@@ -51,7 +51,7 @@ function handlePick() {
     // 更新节点属性
     updateAttributes({
       name: savedElement.name,
-      imageUrl: `api/resource/file/download?fileId=${savedElement.imageId}`,
+      imageUrl: `/api/resource/file/download?fileId=${savedElement.imageId}`,
       elementId: savedElement.id,
       xpath: parsedElementData.path?.xpath || '',
       outerHtml: parsedElementData.path?.outerHTML || '',
@@ -77,7 +77,7 @@ function handleRepick() {
     // 更新节点属性
     updateAttributes({
       name: savedElement.name,
-      imageUrl: `api/resource/file/download?fileId=${savedElement.imageId}`,
+      imageUrl: `/api/resource/file/download?fileId=${savedElement.imageId}`,
       elementId: savedElement.id,
       xpath: parsedElementData.path?.xpath || '',
       outerHtml: parsedElementData.path?.outerHTML || '',

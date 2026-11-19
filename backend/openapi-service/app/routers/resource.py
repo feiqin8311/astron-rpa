@@ -1,4 +1,5 @@
 # ruff: noqa: B008
+import mimetypes
 import secrets
 import time
 from datetime import UTC, datetime
@@ -125,11 +126,21 @@ async def _save_uploaded_file(
 
 @router.get("/download")
 async def download_file(
-    file_id: str = Query(..., alias="fileId", description="文件唯一标识"),
+    file_id: str | None = Query(None, alias="fileId", description="文件唯一标识"),
+    file_id_snake: str | None = Query(None, alias="file_id", description="文件唯一标识 (下划线别名)"),
+    disposition: str = Query("attachment", description="内容处置方式: attachment 或 inline"),
     db: AsyncSession = Depends(get_db),
 ):
     """根据 fileId 下载文件，保持与原有 resource-service 的完整兼容"""
-    stmt = select(FileDB).where(FileDB.file_id == file_id, FileDB.deleted == 0)
+    target_id = file_id or file_id_snake
+    if not target_id:
+        return Response(
+            content='{"code":"900003","message":"缺少文件标识","data":null}',
+            status_code=400,
+            media_type="application/json",
+        )
+
+    stmt = select(FileDB).where(FileDB.file_id == target_id, FileDB.deleted == 0)
     result = await db.execute(stmt)
     file_record = result.scalars().first()
 
@@ -143,21 +154,25 @@ async def download_file(
     storage = get_storage()
     try:
         content = await storage.read(file_record.path)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         return Response(
             content='{"code":"900003","message":"底层文件存储丢失","data":null}',
             status_code=404,
             media_type="application/json",
         )
 
-    filename = file_record.file_name or "download"
+    filename = file_record.file_name or file_record.path.rsplit("/", 1)[-1] or "download"
     encoded_filename = quote(filename.encode("utf-8"))
 
+    media_type, _ = mimetypes.guess_type(filename)
+    media_type = media_type or "application/octet-stream"
+
+    disp = "inline" if disposition == "inline" else "attachment"
     headers = {
-        "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+        "Content-Disposition": f"{disp}; filename*=UTF-8''{encoded_filename}",
         "Access-Control-Expose-Headers": "Content-Disposition",
     }
-    return Response(content=content, media_type="application/octet-stream", headers=headers)
+    return Response(content=content, media_type=media_type, headers=headers)
 
 
 @router.post("/upload")
@@ -202,5 +217,6 @@ async def share_file_upload(
             "fileId": file_id,
             "type": file_type,
             "filename": file.filename,
+            "fileName": file.filename,
         },
     }

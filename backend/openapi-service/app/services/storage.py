@@ -61,7 +61,7 @@ class S3StorageDriver(StoragePort):
             logger.warning("Could not verify or create S3 bucket %s: %s", self.bucket, e)
 
     async def save(self, relative_path: str, data: bytes, content_type: str = "") -> str:
-        clean_path = relative_path.lstrip("/\\")
+        clean_path = relative_path.replace("\\", "/").lstrip("/")
         self.client.put_object(
             bucket_name=self.bucket,
             object_name=clean_path,
@@ -72,7 +72,7 @@ class S3StorageDriver(StoragePort):
         return clean_path
 
     async def read(self, relative_path: str) -> bytes:
-        clean_path = relative_path.lstrip("/\\")
+        clean_path = relative_path.replace("\\", "/").lstrip("/")
         try:
             response = self.client.get_object(self.bucket, clean_path)
             try:
@@ -84,7 +84,7 @@ class S3StorageDriver(StoragePort):
             raise FileNotFoundError(f"Object {clean_path} not found in S3 bucket {self.bucket}: {e}") from e
 
     async def exists(self, relative_path: str) -> bool:
-        clean_path = relative_path.lstrip("/\\")
+        clean_path = relative_path.replace("\\", "/").lstrip("/")
         try:
             self.client.stat_object(self.bucket, clean_path)
             return True
@@ -104,16 +104,22 @@ class LocalStorageDriver(StoragePort):
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.fallback_driver = fallback_driver
 
+    def _resolve_safe_path(self, relative_path: str) -> tuple[str, Path]:
+        clean_path = relative_path.replace("\\", "/").lstrip("/")
+        base_resolved = self.base_dir.resolve()
+        target_path = (base_resolved / clean_path).resolve()
+        if not target_path.is_relative_to(base_resolved):
+            raise ValueError(f"Path traversal attempt detected: {relative_path}")
+        return clean_path, target_path
+
     async def save(self, relative_path: str, data: bytes, content_type: str = "") -> str:
-        clean_path = relative_path.lstrip("/\\")
-        target_path = self.base_dir / clean_path
+        clean_path, target_path = self._resolve_safe_path(relative_path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_bytes(data)
         return clean_path
 
     async def read(self, relative_path: str) -> bytes:
-        clean_path = relative_path.lstrip("/\\")
-        target_path = self.base_dir / clean_path
+        clean_path, target_path = self._resolve_safe_path(relative_path)
         if target_path.exists():
             return target_path.read_bytes()
 
@@ -134,8 +140,11 @@ class LocalStorageDriver(StoragePort):
         raise FileNotFoundError(f"File not found: {relative_path}")
 
     async def exists(self, relative_path: str) -> bool:
-        clean_path = relative_path.lstrip("/\\")
-        if (self.base_dir / clean_path).exists():
+        try:
+            clean_path, target_path = self._resolve_safe_path(relative_path)
+        except ValueError:
+            return False
+        if target_path.exists():
             return True
         if self.fallback_driver:
             return await self.fallback_driver.exists(clean_path)
