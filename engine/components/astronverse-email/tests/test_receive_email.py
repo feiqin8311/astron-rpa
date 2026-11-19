@@ -53,8 +53,7 @@ def _install_email_module_stubs():
 
 
 _install_email_module_stubs()
-from astronverse.email import EmailServerType
-from astronverse.email import core_imap4_receive
+from astronverse.email import EmailServerType, core_imap4_receive
 
 Email = importlib.import_module("astronverse.email.email").Email
 

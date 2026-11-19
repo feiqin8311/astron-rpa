@@ -22,17 +22,28 @@ export function getAPIBaseURL(): string {
 }
 
 export function getImageURL(str: string): string {
-  return isBase64Image(str) ? str : `${getBaseURL()}${str}`
+  if (!str)
+    return ''
+  if (isBase64Image(str))
+    return str
+  const path = str.startsWith('/') ? str : `/${str}`
+  return `${getBaseURL()}${path}`
 }
 
 /**
  * 登录失效
  */
 export function unauthorize(response) {
-  if (response.config.toast === false) {
-    message.error(response.data.message || response.data.msg || '登录失效，请重新登录')
+  if (import.meta.env.VITE_AUTH_MODE === 'local') {
+    if (response.config?.toast !== false) {
+      console.warn('本地单机模式：忽略登录失效并跳过重定向到登录页', response?.data)
+    }
+    return
   }
-  const code = response.data.code || response.data.ret
+  if (response.config?.toast === false) {
+    message.error(response.data?.message || response.data?.msg || '登录失效，请重新登录')
+  }
+  const code = response.data?.code || response.data?.ret
   location.href = `/boot.html?code=${code}`
 }
 

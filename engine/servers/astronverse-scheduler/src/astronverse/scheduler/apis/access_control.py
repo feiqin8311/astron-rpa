@@ -4,7 +4,6 @@ from fastapi import Request
 from fastapi.websockets import WebSocket
 from starlette.responses import JSONResponse
 
-
 LOCAL_HOSTS = {"localhost"}
 REMOTE_ALLOWED_PREFIXES = ("/terminal/", "/executor/")
 

@@ -1,5 +1,5 @@
-from astronverse.browser.browser_software import BrowserSoftware
 from astronverse.browser import CommonForBrowserType, CommonForTimeoutHandleType
+from astronverse.browser.browser_software import BrowserSoftware
 
 
 def test_browser_open_demo():
@@ -20,7 +20,7 @@ def test_browser_open_demo():
             timeout_handle_type=CommonForTimeoutHandleType.ExecError
         )
         
-        print(f"✅ browser_open调用成功！")
+        print("✅ browser_open调用成功！")
         print(f"   浏览器类型: {browser.browser_type}")
         print(f"   浏览器路径: {browser.browser_abs_path}")
         print(f"   浏览器控制对象: {browser.browser_control}")

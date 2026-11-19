@@ -12,7 +12,14 @@ class Settings(BaseSettings):
     REDIS_URL: str
 
     LOG_LEVEL: str = "INFO"
-    LOG_DIR: str = "/var/log/rpa-openapi"
+    LOG_DIR: str = "logs"
+    STORAGE_DRIVER: str = "local"  # "local" or "s3"
+    STORAGE_LOCAL_DIR: str = "data/storage"
+
+    MINIO_URL: str = ""
+    MINIO_BUCKET: str = "rpa-resource"
+    MINIO_AK: str = ""
+    MINIO_SK: str = ""
 
     # URL credentials are disabled by default because query strings commonly
     # appear in browser history and proxy access logs.

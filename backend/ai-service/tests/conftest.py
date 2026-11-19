@@ -1,3 +1,19 @@
+import os
+
+# Set dummy credentials for testing so production settings don't require weak defaults
+os.environ.setdefault("DATABASE_URL", "mysql+aiomysql://test:test@localhost:3306/test")
+os.environ.setdefault("DATABASE_USERNAME", "test")
+os.environ.setdefault("DATABASE_PASSWORD", "test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("AICHAT_BASE_URL", "http://test")
+os.environ.setdefault("AICHAT_API_KEY", "test-key")
+os.environ.setdefault("CUA_BASE_URL", "http://test")
+os.environ.setdefault("CUA_API_KEY", "test-key")
+os.environ.setdefault("XFYUN_APP_ID", "test")
+os.environ.setdefault("XFYUN_API_SECRET", "test")
+os.environ.setdefault("XFYUN_API_KEY", "test")
+os.environ.setdefault("JFBYM_API_TOKEN", "test")
+
 import pytest
 import pytest_asyncio
 from contextlib import asynccontextmanager

@@ -21,7 +21,7 @@ class RunParamFileTest(unittest.TestCase):
 
                 result_path = Path(_write_run_param_file('[{"varName":"message","varValue":"hello"}]'))
 
-                assert result_path.parent == param_dir
+                assert result_path.parent.resolve() == param_dir.resolve()
                 assert json.loads(result_path.read_text(encoding="utf-8")) == [
                     {"varName": "message", "varValue": "hello"}
                 ]

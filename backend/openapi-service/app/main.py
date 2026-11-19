@@ -13,7 +13,15 @@ from app.internal import admin
 from app.logger import get_logger
 from app.middlewares.tracing import RequestTracingMiddleware
 from app.redis import close_redis_pool, init_redis_pool
-from app.routers import api_keys, executions, healthcheck, user, websocket, workflows
+from app.routers import (
+    api_keys,
+    executions,
+    healthcheck,
+    resource,
+    user,
+    websocket,
+    workflows,
+)
 from app.routers.streamable_mcp import (
     handle_streamable_http,
     session_manager,
@@ -66,6 +74,7 @@ app.include_router(api_keys.router)
 app.include_router(healthcheck.router)
 app.include_router(user.router)
 app.include_router(websocket.router)
+app.include_router(resource.router)
 app.mount("/mcp", handle_streamable_http)  # APISIX增加路由，解决307重定向问题
 
 app.add_middleware(RequestTracingMiddleware)

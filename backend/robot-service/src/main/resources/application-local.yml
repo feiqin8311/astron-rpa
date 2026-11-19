@@ -117,34 +117,35 @@ allowed:
 
 # 短信配置
 sms:
-  apiUrl: 
-  secretKey: 
-  appId: 
-  tid: 
+  apiUrl: ${SMS_API_URL:}
+  secretKey: ${SMS_SECRET_KEY:}
+  appId: ${SMS_APP_ID:}
+  tid: ${SMS_TID:}
   # 告警消息模板
   alarmTemplate: 告警通知：{0} 触发规则【{1}】告警，操作者【{2}】，角色【{3}】，请登录平台查看。
 
 example:
-  expoUserId: b6306b95-ebf2-4aed-97ff-e65d463958fe
+  expoUserId: ${EXPO_USER_ID:b6306b95-ebf2-4aed-97ff-e65d463958fe}
 
 uap:
   database:
     name: uap_db
 
 auth:
-  base-url: http://rpa-opensource-rpa-auth:10251
-  check-session-path: /api/rpa-auth/check-session
+  enabled: ${AUTH_ENABLED:true}
+  base-url: ${AUTH_BASE_URL:http://rpa-opensource-rpa-auth:10251}
+  check-session-path: ${AUTH_CHECK_SESSION_PATH:/api/rpa-auth/check-session}
 
 # 团队市场相关配置
 market:
-  maxCreateCount: 3 # 个人版-团队市场创建个数限制
+  maxCreateCount: ${MARKET_MAX_CREATE_COUNT:100} # 团队市场创建个数限制（默认宽松策略）
   invite:
-    maxJoinCount: 10  # 邀请链接最大加入人数
+    maxJoinCount: ${MARKET_MAX_JOIN_COUNT:100}   # 邀请链接最大加入人数
 
 package:
-  download: https://www.iflyrpa.com/api/resource/cloud/s3/downloadDataExe
+  download: ${PACKAGE_DOWNLOAD_URL:}
 
 astron:
   agent:
     api:
-      key: "zyzhou666!"
+      key: ${ASTRON_AGENT_API_KEY:}

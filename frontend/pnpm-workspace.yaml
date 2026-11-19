@@ -1,6 +1,7 @@
 packages:
   - locales
   - packages/*
+  - '!packages/auth-app'
   - components/**
   - '!**/test/**'
 

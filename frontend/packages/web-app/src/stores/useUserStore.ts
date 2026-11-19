@@ -14,8 +14,26 @@ import { usePermissionStore } from '@/stores/usePermissionStore'
 import { useRunningStore } from '@/stores/useRunningStore'
 
 export const useUserStore = defineStore('user', () => {
-  const currentUserInfo = ref()
-  const currentTenant = ref<TenantItem | null>(null) // 当前租户
+  const isLocalMode = import.meta.env.VITE_AUTH_MODE === 'local'
+  const currentUserInfo = ref<any>(
+    isLocalMode
+      ? {
+          id: 'local-user',
+          name: '本地用户',
+          loginName: 'admin',
+          tenantId: 'default',
+        }
+      : null,
+  )
+  const currentTenant = ref<TenantItem | null>(
+    isLocalMode
+      ? ({
+          id: 'default',
+          name: '默认空间',
+          tenantType: 'personal',
+        } as TenantItem)
+      : null,
+  ) // 当前租户
 
   const loginStatus = computed(() => {
     return currentUserInfo.value
@@ -23,8 +41,23 @@ export const useUserStore = defineStore('user', () => {
 
   async function getUserInfo() {
     if (!currentUserInfo.value) {
-      const data = await Auth.userInfo()
-      currentUserInfo.value = data
+      try {
+        const data = await Auth.userInfo()
+        currentUserInfo.value = data
+      }
+      catch (e) {
+        if (isLocalMode) {
+          currentUserInfo.value = {
+            id: 'local-user',
+            name: '本地用户',
+            loginName: 'admin',
+            tenantId: 'default',
+          }
+        }
+        else {
+          throw e
+        }
+      }
     }
     return currentUserInfo.value
   }

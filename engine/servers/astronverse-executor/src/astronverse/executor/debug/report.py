@@ -70,7 +70,7 @@ class Report(IReport):
             self.log_local_file
             and (not self.log_local_file.closed)
             and filtered_dict["log_type"] != ReportType.Tip
-            and filtered_dict.get("tag", None) != "tip"
+            and filtered_dict.get("tag") != "tip"
         ):
             # Tip数据不写入到日志里面, tag等于Tag也不写入到日志
             message = json.dumps(

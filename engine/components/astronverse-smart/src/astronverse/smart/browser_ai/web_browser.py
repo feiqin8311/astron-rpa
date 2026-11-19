@@ -1,6 +1,6 @@
 from typing import Union
 
-from astronverse.actionlib.types import WebPick, URL
+from astronverse.actionlib.types import URL, WebPick
 from astronverse.baseline.logger.logger import logger
 from astronverse.browser import *
 from astronverse.browser.browser import Browser

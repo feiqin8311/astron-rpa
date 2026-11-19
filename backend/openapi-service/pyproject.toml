@@ -18,7 +18,8 @@ dependencies = [
     "sqlalchemy>=2.0.41",
     "pytz",
     "mcp==1.26.0",
-    "rpawebsocket"
+    "rpawebsocket",
+    "minio>=7.2.20",
 ]
 
 [dependency-groups]

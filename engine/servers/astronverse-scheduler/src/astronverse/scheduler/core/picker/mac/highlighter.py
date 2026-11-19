@@ -446,7 +446,7 @@ def run(port: int) -> None:
             while not self.stop.is_set():
                 try:
                     data, addr = self.sock.recvfrom(65535)
-                except socket.timeout:
+                except TimeoutError:
                     continue
                 except OSError:
                     break

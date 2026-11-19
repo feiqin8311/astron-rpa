@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 import pyautogui
 import uiautomation as auto
-from astronverse.picker import APP, IElement, PickerDomain, PickerType, Point, Rect, BROWSER_UIA_POINT_CLASS
+from astronverse.picker import APP, BROWSER_UIA_POINT_CLASS, IElement, PickerDomain, PickerType, Point, Rect
 from astronverse.picker.logger import logger
 from astronverse.picker.utils.cv import screenshot
 from astronverse.picker.utils.process import get_process_name
@@ -642,7 +642,7 @@ class UIAOperate:
             return False, 0, 0, 0
         tag_value, tag = point_cfg
         while control:
-            if app in [APP.Firefox]:
+            if app == APP.Firefox:
                 # Firefox: 向下遍历子树查找，需要边界判断
                 for child, _ in auto.WalkControl(control, includeTop=True, maxDepth=10):
                     if child.AutomationId == tag_value:

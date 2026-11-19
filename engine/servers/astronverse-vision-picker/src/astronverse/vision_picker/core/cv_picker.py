@@ -4,8 +4,8 @@ import time
 
 import cv2
 import numpy as np
-from PIL import Image
 from astronverse.vision_picker.logger import logger
+from PIL import Image
 
 # def ocr_image(image, flag):
 #     """

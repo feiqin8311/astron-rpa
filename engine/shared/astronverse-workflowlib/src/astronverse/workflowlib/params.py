@@ -1,8 +1,9 @@
+import ast
 import functools
 import inspect
 from enum import Enum
 from typing import Any, Optional
-import ast
+
 import astor
 
 

@@ -3,7 +3,6 @@ import subprocess
 import sys
 
 from astronverse.baseline.logger.logger import logger
-from astronverse.browser import BROWSER_REGISTER_NAME
 from astronverse.browser.error import *
 
 

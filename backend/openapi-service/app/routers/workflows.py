@@ -1,3 +1,4 @@
+# ruff: noqa: B008, N803, TRY401
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 
 from app.dependencies import (
@@ -335,3 +336,26 @@ async def copy_workflow(
     """复制工作流"""
     # Copying to a phone number is delegated execution without a verified grant.
     raise HTTPException(403, "Cross-user workflow copying is not authorized by an API key")
+
+
+@router.delete(
+    "/{project_id}",
+    response_model=StandardResponse,
+    status_code=status.HTTP_200_OK,
+    summary="删除工作流投影",
+    description="删除指定 project_id 的外部工作流投影",
+)
+async def delete_workflow(
+    project_id: str = Path(..., description="工作流项目ID"),
+    user_id: str = Depends(get_user_id_with_fallback),
+    service: WorkflowService = Depends(get_workflow_service),
+):
+    """删除工作流"""
+    try:
+        success = await service.delete_workflow(project_id, user_id)
+        if not success:
+            return StandardResponse(code=ResCode.SUCCESS, msg="工作流不存在或已删除", data=False)
+        return StandardResponse(code=ResCode.SUCCESS, msg="删除成功", data=True)
+    except Exception:
+        logger.exception("Failed to delete workflow %s", project_id)
+        return StandardResponse(code=ResCode.ERR, msg="删除工作流失败", data=False)

@@ -276,6 +276,9 @@ router.beforeEach(async (to, _from, next) => {
     if (first)
       return next(first)
 
+    if (import.meta.env.VITE_AUTH_MODE === 'local') {
+      return next()
+    }
     window.location.href = '/boot.html?code=403' // 无权限访问，跳转到登录页
     return
   }

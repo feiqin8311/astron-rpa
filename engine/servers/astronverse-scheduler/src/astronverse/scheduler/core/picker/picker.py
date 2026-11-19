@@ -21,22 +21,19 @@ class Picker:
     def init(self):
         python_executable = self.svc.config.python_core
 
-        # 1. 服务声明
+        # 1. 平台特定 highlighter
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         if sys.platform == "win32" and platform.release() != "7":
             highlighter_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
+                base_dir,
                 "win",
                 "RPAHighlighter",
                 "ConsoleApp1.exe",
             )
             self.highlighter = SubPopen(name="highlighter", cmd=[highlighter_path])
-            self.vision_picker = SubPopen(
-                name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
-            )
-            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
         elif sys.platform == "win32" and platform.release() == "7":
             highlighter_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
+                base_dir,
                 "win",
                 "RPAHighlighter",
                 "cv_match_application_4.0.py",
@@ -49,13 +46,9 @@ class Picker:
                     "{}".format(self.svc.rpa_hl_port),
                 ],
             )
-            self.vision_picker = SubPopen(
-                name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
-            )
-            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
         elif sys.platform == "darwin":
             highlighter_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
+                base_dir,
                 "mac",
                 "highlighter.py",
             )
@@ -67,13 +60,9 @@ class Picker:
                     "{}".format(self.svc.rpa_hl_port),
                 ],
             )
-            self.vision_picker = SubPopen(
-                name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
-            )
-            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
         else:
             highlighter_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
+                base_dir,
                 "linux",
                 "RPAHighlighter",
                 "cv_match_application_4.0.py",
@@ -86,12 +75,12 @@ class Picker:
                     "{}".format(self.svc.rpa_hl_port),
                 ],
             )
-            self.vision_picker = SubPopen(
-                name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"]
-            )
-            self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
 
-        # 2. 服务配置
+        # 2. 定位服务进程
+        self.vision_picker = SubPopen(name="vision_picker", cmd=[python_executable, "-m", "astronverse.vision_picker"])
+        self.app_picker = SubPopen(name="picker", cmd=[python_executable, "-m", "astronverse.picker"])
+
+        # 3. 服务配置
         self.app_picker.set_param("port", self.svc.get_validate_port(ComponentType.PICKER))
         self.app_picker.set_param("route_port", self.svc.rpa_route_port)
         self.app_picker.set_param("highlight_socket_port", self.svc.rpa_hl_port)

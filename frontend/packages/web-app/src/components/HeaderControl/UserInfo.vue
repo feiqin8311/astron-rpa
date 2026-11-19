@@ -19,14 +19,10 @@ const runningStore = useRunningStore()
 const userStore = useUserStore()
 const appStore = useAppConfigStore()
 const { appInfo } = storeToRefs(appStore)
+const isLocalMode = import.meta.env.VITE_AUTH_MODE === 'local'
 
 const menuData = computed(() => {
   return [
-    // {
-    //   key: 'userRight',
-    //   icon: 'rights',
-    //   label: t('userInfo.userRight'),
-    // },
     {
       key: 'changeMode',
       icon: 'rights',
@@ -37,6 +33,7 @@ const menuData = computed(() => {
       key: 'logout',
       icon: 'logout',
       label: t('logout'),
+      hidden: () => isLocalMode,
     },
   ].filter(item => !item.hidden || !item.hidden())
 })
@@ -95,7 +92,9 @@ async function menuClick(item: any) {
 async function logout() {
   await userStore.logout()
   taskNotify({ event: 'exit' }) // 不阻塞
-  location.replace(`/boot.html`)
+  if (!isLocalMode) {
+    location.replace(`/boot.html`)
+  }
 }
 
 function modalTip() {
@@ -129,8 +128,9 @@ function modalTip() {
             <span class="text-[rgba(0,0,0,0.65)] dark:text-[rgba(255,255,255,0.65)]">{{ userStore.currentUserInfo?.name || userStore.currentUserInfo?.loginName }}</span>
           </div>
         </div>
+        <!-- 单人模式隐藏咨询/升级入口 -->
         <Auth.Consult
-          v-if="userStore.currentTenant?.tenantType !== 'enterprise'"
+          v-if="!isLocalMode && userStore.currentTenant?.tenantType !== 'enterprise'"
           :auth-type="appInfo.appAuthType"
           trigger="button"
           :button-conf="{ buttonType: 'tag', currentEdition: userStore.currentTenant?.tenantType, expirationDate: userStore.currentTenant?.expirationDate, shouldAlert: userStore.currentTenant?.shouldAlert }"

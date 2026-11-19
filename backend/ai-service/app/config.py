@@ -6,13 +6,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "AI Service"
     API_VERSION: str = "1.0"
+    ENABLE_BILLING: bool = False  # 开源/单机模式默认关闭积分扣费与账本校验
+
     DATABASE_URL: str
     DATABASE_USERNAME: str
     DATABASE_PASSWORD: str
     REDIS_URL: str
 
     LOG_LEVEL: str = "INFO"
-    LOG_DIR: str = "/app/log"
+    LOG_DIR: str = "logs"
 
     MONTHLY_GRANT_AMOUNT: int = 100000
 

@@ -24,7 +24,6 @@ import win32api
 import win32con
 import win32gui
 import win32process
-
 from astronverse.picker.logger import logger
 
 # Win32 常量

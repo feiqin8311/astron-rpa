@@ -1,3 +1,11 @@
+import os
+
+# Set dummy credentials for testing so production settings don't require weak defaults
+os.environ.setdefault("DATABASE_URL", "mysql+aiomysql://test:test@localhost:3306/test")
+os.environ.setdefault("DATABASE_USERNAME", "test")
+os.environ.setdefault("DATABASE_PASSWORD", "test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+
 from contextlib import asynccontextmanager
 
 import pytest

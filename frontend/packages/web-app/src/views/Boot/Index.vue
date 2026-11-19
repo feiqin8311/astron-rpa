@@ -24,6 +24,7 @@ const progress = ref(0)
 const isLogin = ref(false)
 const loginFormRef = ref()
 const autoLogin = ref(true)
+const isLocalMode = import.meta.env.VITE_AUTH_MODE === 'local'
 
 function loginWindowStep() {
   windowManager.restoreLoginWindow()
@@ -55,6 +56,10 @@ utilsManager.listenEvent('scheduler-event', (eventMsg) => {
 })
 
 function loginAuto() {
+  if (isLocalMode) {
+    loginSuccess({ name: '本地用户', loginName: 'admin' })
+    return
+  }
   if (sessionStorage.getItem('launch') === '1') {
     isLogin.value = true
     const searchParams = new URLSearchParams(window.location.search)
@@ -100,7 +105,7 @@ onUnmounted(() => {
       <template #header>
         <BootHeader />
       </template>
-      <template v-if="!isLogin" #container>
+      <template v-if="!isLogin || isLocalMode" #container>
         <div
           class="flex items-center justify-center"
         >
@@ -118,7 +123,7 @@ onUnmounted(() => {
           </LaunchCarousel>
         </div>
       </template>
-      <Auth.LoginForm v-if="isLogin" ref="loginFormRef" :base-url="getAPIBaseURL()" :auto-login="autoLogin" :auth-type="appInfo.appAuthType" :edition="appInfo.appEdition" @finish="loginSuccess" />
+      <Auth.LoginForm v-if="isLogin && !isLocalMode" ref="loginFormRef" :base-url="getAPIBaseURL()" :auto-login="autoLogin" :auth-type="appInfo.appAuthType" :edition="appInfo.appEdition" @finish="loginSuccess" />
     </Auth.PageLayout>
     <Loading />
   </ConfigProvider>
